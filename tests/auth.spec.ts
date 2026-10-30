@@ -1,0 +1,14 @@
+import {test,expect} from '@playwright/test';
+const credentials={username:'testadmin',password:'Only-for-e2e-tests-2026!'};
+test('未登录仅显示登录页，登录可访问，退出后清空业务界面并拒绝导出',async({page,request})=>{
+ for(const path of ['/api/state','/api/audits','/api/export/devices.csv'])expect((await request.get(path)).status()).toBe(401);
+ await page.goto('/');await expect(page.getByRole('heading',{name:'登录工作空间',exact:true})).toBeVisible();await expect(page.locator('.app-shell')).toHaveCount(0);
+ await page.getByLabel('账号',{exact:true}).fill(credentials.username);await page.getByLabel('密码',{exact:true}).fill('wrong-password');await page.getByRole('button',{name:'登录',exact:true}).click();await expect(page.getByRole('alert')).toContainText('账号或密码不正确');await expect(page.locator('.app-shell')).toHaveCount(0);
+ await page.getByLabel('密码',{exact:true}).fill(credentials.password);await page.getByRole('button',{name:'登录',exact:true}).click();await expect(page.getByRole('heading',{name:'空间总览',exact:true})).toBeVisible();
+ const cookies=await page.context().cookies();const session=cookies.find(c=>c.name==='aom_session')!;expect(session.httpOnly).toBe(true);expect(session.sameSite).toBe('Strict');expect(await page.evaluate(()=>document.cookie)).not.toContain('aom_session');
+ await page.screenshot({path:'.cache/authenticated-workspace.png',fullPage:true});await page.getByRole('button',{name:'用户菜单',exact:true}).click();await page.getByRole('menuitem',{name:'退出登录',exact:true}).click();await expect(page.getByRole('heading',{name:'登录工作空间',exact:true})).toBeVisible();await expect(page.locator('.app-shell')).toHaveCount(0);expect((await page.context().request.get('/api/state')).status()).toBe(401);await page.screenshot({path:'.cache/login.png',fullPage:true});
+});
+test('直接打开详情仍需登录；密码修改入口校验当前密码',async({page})=>{
+ await page.goto('/#topology');await expect(page.getByRole('heading',{name:'登录工作空间',exact:true})).toBeVisible();await page.getByLabel('账号',{exact:true}).fill(credentials.username);await page.getByLabel('密码',{exact:true}).fill(credentials.password);await page.getByRole('button',{name:'登录',exact:true}).click();await expect(page.getByRole('heading',{name:'网络拓扑',level:1,exact:true})).toBeVisible();
+ await page.getByRole('button',{name:'用户菜单',exact:true}).click();await page.getByRole('menuitem',{name:'修改登录密码',exact:true}).click();await page.getByLabel('当前密码',{exact:true}).fill('wrong-current-password');await page.getByLabel('新密码',{exact:true}).fill('a-different-test-password!');await page.getByLabel('确认新密码',{exact:true}).fill('a-different-test-password!');await page.getByRole('button',{name:'保存新密码',exact:true}).click();await expect(page.getByRole('alert')).toContainText('当前密码不正确');await page.getByRole('button',{name:'返回工作空间',exact:true}).click();await expect(page.getByRole('heading',{name:'网络拓扑',level:1,exact:true})).toBeVisible();
+});

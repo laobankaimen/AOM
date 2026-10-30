@@ -1,0 +1,5 @@
+model,quantity,name,asset_prefix,ip,sn,note
+KunTai R722 K2,12,示例计算节点,DEMO-COMPUTE,,,仅用于验证导入流程
+KunTai R624 K2,4,示例存储节点,DEMO-STORAGE,,,示例数据
+RZ2805-48YS8CQ,2,示例业务接入,DEMO-NET,,,示例数据
+RZ18001-1,1,示例核心设备,DEMO-CORE,,,U高待确认，保留待上架

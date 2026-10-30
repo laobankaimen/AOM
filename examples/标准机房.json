@@ -1,0 +1,15 @@
+{
+  "project_name": "新项目",
+  "site_name": "主机房",
+  "modules": [
+    {"name": "点位1 · 单排微模块", "point": "点位1", "product_model": "曙光数创 C2000（SG6600）", "type": "single", "rack_count": 5, "u_height": 42},
+    {"name": "点位1 · 双排微模块", "point": "点位1", "product_model": "曙光数创 C2000（SG6600）", "type": "double", "rack_left": 4, "rack_right": 4, "u_height": 42, "infra": {"power": 2, "ac": 2, "env": 2}},
+    {"name": "点位2 · 单排微模块", "point": "点位2", "product_model": "曙光数创 C500（C500-40K）", "type": "single", "rack_count": 4, "u_height": 42, "layout": [
+      {"kind": "power", "name": "集成配电 · 位置待确认", "side": "L", "after_rack": 1, "placement": "integrated"},
+      {"kind": "ac", "name": "集成制冷 · 位置待确认", "side": "L", "after_rack": 1, "placement": "integrated"},
+      {"kind": "ups", "name": "集成UPS · 位置待确认", "side": "L", "after_rack": 1, "placement": "integrated"},
+      {"kind": "env", "name": "环境监控 · 位置待确认", "side": "L", "after_rack": 1, "placement": "integrated"}
+    ]}
+  ],
+  "infra": {"power": 1, "ac": 1, "env": 1}
+}

@@ -1,0 +1,20 @@
+import {test,expect} from './fixtures';
+import type {State} from '../src/model';
+import {enterRoom} from './navigation';
+test('图形移动不产生审计，设备机位保留精简明细，历史整理不改变资产',async({page,request})=>{
+ let s:State=await(await request.get('/api/state')).json();const plan=await request.post('/api/plans',{data:{revision:s.revision,plan:{project_name:'关键审计验收',site_name:'审计机房',modules:[{name:'审计模块',type:'single',rack_count:2,u_height:42}],infra:{power:1,ac:1,env:1}}}});expect(plan.ok()).toBe(true);s=await plan.json();const project=s.projects.find(p=>p.name==='关键审计验收')!,room=s.sites.find(r=>r.projectId===project.id)!,module=s.modules.find(m=>m.siteId===room.id)!;
+ const created=await request.post('/api/devices',{data:{revision:s.revision,autoPlace:true,device:{name:'审计服务器',assetTag:'AUDIT-'+project.id,moduleId:module.id,modelId:'model-r722',status:'pending'}}});expect(created.ok()).toBe(true);s=await created.json();const device=s.devices.find(d=>d.moduleId===module.id)!,revision=s.revision;
+ await page.goto('/');await page.getByRole('combobox',{name:'选择项目',exact:true}).selectOption(project.id);await enterRoom(page,room.name);
+ const node=page.getByRole('button',{name:'选择布局模块 审计模块',exact:true});await node.focus();await node.press('Alt+ArrowRight');
+ await expect.poll(async()=>(await(await request.get('/api/state')).json()).revision).toBe(revision+1);
+ let audits=await(await request.get('/api/audits')).json();expect(audits.filter((a:{revision:number})=>a.revision>revision)).toHaveLength(0);
+ s=await(await request.get('/api/state')).json();expect(s.modules.find(m=>m.id===module.id)?.roomPosition).toBeTruthy();
+ const target=s.racks.find(r=>r.moduleId===module.id&&r.id!==device.rackId)!;const moved=await request.post(`/api/devices/${device.id}/placement`,{data:{revision:s.revision,rackId:target.id,startU:10}});expect(moved.ok()).toBe(true);s=await moved.json();
+ audits=await(await request.get('/api/audits')).json();const entry=audits.find((a:{revision:number})=>a.revision===s.revision);expect(entry.action).toBe('device.place');
+ const detail=await(await request.get('/api/audits/'+entry.id)).json();expect(detail.before.devices).toHaveLength(1);expect(detail.after.devices).toHaveLength(1);expect(detail.before.devices[0].rackId).toBe(device.rackId);expect(detail.after.devices[0].rackId).toBe(target.id);expect(detail.after.format).toBe('changed-records-v1');expect(detail.after.modules).toBeUndefined();
+ await page.getByRole('button',{name:'刷新数据',exact:true}).click();await page.getByRole('navigation',{name:'主导航'}).getByRole('button',{name:'变更审计',exact:true}).click();await expect(page.getByText('只记录关键业务变更',{exact:true})).toBeVisible();
+ await page.getByRole('button',{name:'精简历史记录',exact:true}).click();await expect(page.getByRole('status')).toContainText('审计正文减少');
+ expect(await(await request.get('/api/state')).json()).toEqual(s);
+ const unchanged=await(await request.get('/api/audits/'+entry.id)).json();expect(unchanged).toEqual(detail);
+ const conflict=await request.post('/api/audits/compact',{data:{revision:s.revision-1}});expect(conflict.status()).toBe(409);
+});

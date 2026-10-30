@@ -1,0 +1,4 @@
+import {build} from 'esbuild';import assert from 'node:assert/strict';import test from 'node:test';
+const {outputFiles}=await build({entryPoints:['src/topologyViewport.ts'],bundle:true,write:false,format:'esm',platform:'node'});const {topologyFitZoom,anchoredScroll}=await import('data:text/javascript;base64,'+Buffer.from(outputFiles[0].text).toString('base64'));
+test('overview respects width and height; ordinary zoom is independent from fit',()=>{assert.equal(topologyFitZoom(1200,1600,1000,800),45);assert.ok(topologyFitZoom(300,300,1800,1200)<=200);assert.ok(topologyFitZoom(0,0,0,0)>0)});
+test('pointer anchored zoom preserves diagram coordinates after a scroll adjustment',()=>{for(const before of [.5,1,2])for(const after of [.8,1.5,3]){const scroll=400,anchor=250,next=anchoredScroll(scroll,anchor,before,after);assert.ok(Math.abs((next+anchor-40)/after-(scroll+anchor-40)/before)<1e-8)}});

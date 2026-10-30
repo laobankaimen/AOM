@@ -1,0 +1,14 @@
+node_modules/
+dist/
+.idea/
+playwright-report/
+test-results/
+*.local
+.tools/
+.cache/
+data/
+release/
+cmd/aom/web/*
+!cmd/aom/web/.gitkeep
+
+tmp/pdfs/

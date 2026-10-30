@@ -1,0 +1,41 @@
+{
+  "format": "aom-module-template",
+  "version": 1,
+  "template": {
+    "name": "通用单排4柜",
+    "description": "示例布局，按现场资料调整。",
+    "plan": {
+      "name": "单排微模块",
+      "type": "single",
+      "rack_count": 4,
+      "u_height": 42,
+      "product_model": "",
+      "point": "",
+      "rack_names": {
+        "L": [
+          "A01",
+          "A02",
+          "A03",
+          "A04"
+        ],
+        "R": []
+      },
+      "layout": [
+        {
+          "name": "供电",
+          "kind": "power",
+          "side": "L",
+          "after_rack": 0,
+          "placement": "inline"
+        },
+        {
+          "name": "列间空调",
+          "kind": "ac",
+          "side": "L",
+          "after_rack": 2,
+          "placement": "inline"
+        }
+      ]
+    }
+  }
+}
