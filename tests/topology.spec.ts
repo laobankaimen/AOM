@@ -18,14 +18,14 @@ async function fixture(request:APIRequestContext,page:Page,name:string){
   expect(created.ok()).toBeTruthy();s=await created.json();devices.push(s.devices.find(d=>d.assetTag===project.id+'-'+name)!);
  }
  await page.goto('/');await page.getByRole('combobox',{name:'选择项目',exact:true}).selectOption(project.id);
- await page.getByRole('navigation',{name:'主导航'}).getByRole('button',{name:'网络拓扑',exact:true}).click();
+ await page.getByRole('navigation',{name:'主导航'}).getByRole('link',{name:'网络拓扑',exact:true}).click();
  await expect(page.getByRole('heading',{name:'网络拓扑',exact:true,level:1})).toBeVisible();
  await expect(page.locator('.topology-workspace')).toHaveCount(1);
  await expect(page.locator('.heading-actions .topology-workspace')).toHaveCount(0);
  await expect(page.getByRole('button',{name:'网络与分层',exact:true})).toBeVisible();await openNetworkPanel(page);await expect(page.getByRole('button',{name:'新增网络分区',exact:true})).toHaveCount(1);await closeNetworkPanel(page);
- await page.getByRole('navigation',{name:'主导航'}).getByRole('button',{name:'空间总览',exact:true}).click();
+ await page.getByRole('navigation',{name:'主导航'}).getByRole('link',{name:'空间总览',exact:true}).click();
  await expect(page.locator('.topology-workspace')).toHaveCount(0);
- await page.getByRole('navigation',{name:'主导航'}).getByRole('button',{name:'网络拓扑',exact:true}).click();
+ await page.getByRole('navigation',{name:'主导航'}).getByRole('link',{name:'网络拓扑',exact:true}).click();
  await expect(page.locator('.topology-workspace')).toHaveCount(1);
  return {s,project,roomA,roomB,devices};
 }
@@ -95,7 +95,7 @@ test('网络推演预览只读、待确认连接及端口冲突保护',async({pa
  await openNetworkPanel(page);await page.getByRole('button',{name:'新增链路',exact:true}).click();await dialog.getByRole('combobox',{name:'端点A设备',exact:true}).selectOption(devices[1].id);await dialog.getByRole('combobox',{name:'端点B设备',exact:true}).selectOption(devices[0].id);
  await dialog.getByLabel('端点 A 端口',{exact:true}).fill('port1');await dialog.getByLabel('端点 B 端口',{exact:true}).fill('uplink1');
  await dialog.getByRole('button',{name:'保存设备链路',exact:true}).click();await expect(dialog.getByRole('alert')).toContainText('物理端口已被链路');
- await dialog.getByRole('button',{name:'返回查看',exact:true}).click();s=await state(request);expect(s.links.filter(l=>l.projectId===project.id)).toHaveLength(2);
+ page.once('dialog',dialog=>dialog.accept());await dialog.getByRole('button',{name:'返回查看',exact:true}).click();s=await state(request);expect(s.links.filter(l=>l.projectId===project.id)).toHaveLength(2);
  await openNetworkPanel(page);await page.getByRole('button',{name:'编辑当前网络',exact:true}).click();await page.getByRole('button',{name:'高级编辑',exact:true}).click();await dialog.getByRole('checkbox',{name:'网络成员 服务器测试',exact:true}).uncheck();await dialog.getByRole('button',{name:'保存网络分区',exact:true}).click();await expect(dialog.getByRole('alert')).toContainText('链路两端必须都属于');
 });
 
@@ -130,7 +130,7 @@ test('多网络自动排列紧凑，界面收起恢复不修改业务数据',asy
  }
  const net=s.networks.find(n=>n.projectId===project.id&&n.name==='计算分区')!,empty=s.networks.find(n=>n.projectId===project.id&&n.name==='空分区')!;
  const moved=await request.post(`/api/networks/${net.id}/position`,{data:{revision:s.revision,deviceId:devices[2].id,position:{x:2400,y:1000}}});expect(moved.ok()).toBe(true);s=await moved.json();
- await page.reload();await page.getByRole('combobox',{name:'选择项目',exact:true}).selectOption(project.id);await page.getByRole('navigation',{name:'主导航'}).getByRole('button',{name:'网络拓扑',exact:true}).click();
+ await page.reload();await page.getByRole('combobox',{name:'选择项目',exact:true}).selectOption(project.id);await page.getByRole('navigation',{name:'主导航'}).getByRole('link',{name:'网络拓扑',exact:true}).click();
  await expect(page.locator(`[data-topology-lane="${empty.id}"]`)).toHaveCount(0);
  await openCanvasMenu(page);await page.getByRole('button',{name:'自动排列',exact:true}).click();await expect.poll(async()=>(await state(request)).revision).toBe(s.revision+1);
  let after=await state(request);expect(after.links).toEqual(s.links);expect(after.devices).toEqual(s.devices);expect(after.networks.find(n=>n.id===net.id)?.devicePositions?.[devices[2].id]).toEqual({x:0,y:0});

@@ -15,7 +15,7 @@ test('quick forms render Vue reactive edit data and actionable duplicate feedbac
 test('merged graph renders counts, selectable cards and finite geometry',async()=>{
  const devices=[...state.devices,{...state.devices[1],id:'c',name:'服务器C'}],net={...network,deviceIds:['a','b','c']};
  const html=await renderToString(createSSRApp({render:()=>h(Graph,{state:{...state,devices,networks:[net]},devices,networks:[net],links:[{id:'l',sourceId:'a',targetId:'b',kind:'logical',status:'pending',networkIds:['n']}],networkId:'',selectedDevice:'',selectedLink:'',zoom:85,merge:true})}));
- assert.match(html,/设备连接与网络分区图/);assert.match(html,/展开 计算型号 2台/);assert.ok(!html.includes('NaN'));assert.ok(!html.includes('undefined'));assert.match(html,/stroke-dasharray="5 5"/);
+ assert.match(html,/设备连接与网络分区图/);assert.match(html,/查看拓扑设备 服务器B/);assert.match(html,/查看拓扑设备 服务器C/);assert.ok(!html.includes('展开 计算型号 2台'));assert.ok(!html.includes('NaN'));assert.ok(!html.includes('undefined'));assert.match(html,/stroke-dasharray="5 5"/);
 });
 
 test('device graph renders only populated networks and a full-size finite viewport',async()=>{

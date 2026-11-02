@@ -92,12 +92,12 @@ test('CSV预览不写库、确认导入与台账持久化', async ({ page, reque
   expect(imported.filter(d => d.rackId)).toHaveLength(18);
   expect(after.revision).toBe(before.revision + 1);
   await page.screenshot({ path: '.cache/overview-populated.png', fullPage: true });
-  await page.getByRole('button', { name: '设备台账', exact: true }).click();
+  await page.getByRole('link', { name: '设备台账', exact: true }).click();
   await page.reload();
   await page.getByRole('combobox',{name:'选择项目',exact:true}).selectOption(ownProject.id);
   await expect(page.getByRole('heading', { name: '设备台账', exact: true })).toBeVisible();
   await expect(page.locator('tbody tr')).toHaveCount(19);
-  await page.getByRole('button', { name: '变更审计', exact: true }).click();
+  await page.getByRole('link', { name: '变更审计', exact: true }).click();
   await expect(page.getByRole('cell', { name: /CSV导入19台/ })).toBeVisible();
   expect(errors).toEqual([]);
 });
@@ -114,7 +114,7 @@ test('立面拖拽成功、U位冲突回滚且不新增审计', async ({ page, r
   const moved = afterMove.devices.find(d => d.id === device.id)!;
   await expect(page.getByRole('button', { name: `${device.name} U41`, exact: true })).toBeVisible();
   await dragToU(page, moved, devices[1].startU);
-  await expect(page.getByRole('status')).toContainText('U位冲突');
+  await expect(page.locator('.drag-status')).toContainText('已保留原机位');
   const afterConflict = await snapshot(request);
   expect(afterConflict.devices.find(d => d.id === device.id)?.startU).toBe(41);
   expect(afterConflict.revision).toBe(afterMove.revision);
@@ -144,16 +144,16 @@ test('编辑页面跨柜移动、台账导出与审计快照', async ({ page, re
   expect(updated.rackId).toBe(targetRack.id);
   expect(updated.startU).toBe(1);
   expect(after.revision).toBe(before.revision + 1);
-  await page.getByRole('button', { name: '设备台账', exact: true }).click();
+  await page.getByRole('link', { name: '设备台账', exact: true }).click();
   await page.getByRole('textbox', { name: '搜索设备' }).fill(device.assetTag);
   await expect(page.locator('tbody tr')).toHaveCount(1);
   await expect(page.locator('tbody tr')).toContainText('L02');
   const downloadPromise = page.waitForEvent('download');
-  await page.getByRole('link', { name: '导出台账' }).click();
+  await page.getByRole('link', { name: /导出当前筛选/ }).click();
   const exported = await readFile((await (await downloadPromise).path())!, 'utf8');
   expect(exported).toContain(device.assetTag);
   expect(exported.split('\n').find(line => line.includes(device.assetTag))).toContain('L02');
-  await page.getByRole('button', { name: '变更审计', exact: true }).click();
+  await page.getByRole('link', { name: '变更审计', exact: true }).click();
   const auditRow = page.getByRole('row').filter({ hasText: `修改设备：${device.assetTag}` });
   await expect(auditRow).toBeVisible();
   const auditDownloadPromise = page.waitForEvent('download');
@@ -193,21 +193,21 @@ test('标准向导与可复用规划，手机布局', async ({ page, request }) 
 
 test('型号维护、手工新增与引用保护', async ({ page, request }) => {
   await page.goto('/');
-  await page.getByRole('button', { name: '型号库', exact: true }).click();
+  await page.getByRole('link', { name: '型号库', exact: true }).click();
   await page.getByRole('button', { name: '新增型号' }).click();
   await page.getByLabel('型号名称').fill('验收 4U 服务器');
   await page.getByLabel('厂商', { exact: true }).fill('测试厂商');
   await page.getByLabel('设备高度（U）').fill('4');
   await page.getByRole('button', { name: '保存型号' }).click();
   await expect(page.getByRole('region',{name:'新增设备型号',exact:true})).toHaveCount(0);
-  await page.getByRole('button', { name: '设备台账', exact: true }).click();
+  await page.getByRole('link', { name: '设备台账', exact: true }).click();
   await page.getByRole('button', { name: '新增设备', exact: true }).click();
   await page.getByLabel('资产编号', { exact: true }).fill('TEST-4U');
   await page.getByRole('combobox', { name: '设备型号', exact: true }).selectOption({ label: '验收 4U 服务器 · 4U' });
   await page.getByRole('button', { name: '保存设备' }).click();
   await expect(page.getByRole('region', {name:'新增设备',exact:true})).toHaveCount(0);
   expect((await snapshot(request)).devices.find(d => d.assetTag === 'TEST-4U')?.rackId).toBeTruthy();
-  await page.getByRole('button', { name: '型号库', exact: true }).click();
+  await page.getByRole('link', { name: '型号库', exact: true }).click();
   const row = page.getByRole('row').filter({ hasText: '验收 4U 服务器' });
   await row.getByRole('button', { name: '删除', exact: true }).click();
   await page.getByRole('button', { name: '确认删除' }).click();
@@ -248,7 +248,7 @@ test('项目下同一机房总览三个微模块，并编辑右列空调位置',
   const plan=await (await request.get('/api/export/plan.json?siteId='+room.id)).json();
   expect(plan.modules.find((m:any)=>m.type==='double').layout).toContainEqual({name:ac.name,kind:'ac',side:'R',after_rack:2,placement:'inline'});
   const c500=modules.find(m=>m.productModel.includes('C500'))!;
-  await page.getByRole('navigation',{name:'位置导航'}).getByRole('button',{name:`返回机房 ${room.name}`,exact:true}).click();await enterModule(page,c500.name);await page.getByRole('button',{name:'选择机柜 L02',exact:true}).click();await page.getByRole('button',{name:'查看 42U 立面',exact:true}).click();
+  await page.getByRole('navigation',{name:'位置导航'}).getByRole('link',{name:`返回机房 ${room.name}`,exact:true}).click();await enterModule(page,c500.name);await page.getByRole('button',{name:'选择机柜 L02',exact:true}).click();await page.getByRole('button',{name:'查看 42U 立面',exact:true}).click();
   await expect(page.getByRole('heading',{name:'42U 机柜立面',exact:true})).toBeVisible();
   await expect(page.locator('.elevation-card')).toHaveCount(4);
 });

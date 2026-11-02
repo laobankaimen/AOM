@@ -16,13 +16,19 @@ test('hidden other-network membership prevents false grouping in a filtered view
  const networks=[{id:'business',deviceIds:['1','2']},{id:'management',deviceIds:['2']}];
  const filtered=projectTopology(devices,models,[networks[0]],networks,[],true,new Set());assert.equal(filtered.nodes.length,2);assert.deepEqual(filtered.nodes.find(n=>n.id==='2').networkIds,['business','management']);
 });
-test('collapsed groups preserve real physical/logical links and internal connection counts',()=>{
+test('different connection patterns remain distinct and preserve every real link',()=>{
  const devices=[{id:'1',modelId:'m',name:'one'},{id:'2',modelId:'m',name:'two'},{id:'3',modelId:'n',name:'switch'}],models=[{id:'m',role:'server',name:'server'},{id:'n',role:'access',name:'switch'}];
  const links=[{id:'a',sourceId:'1',targetId:'2',kind:'physical',status:'confirmed'},{id:'b',sourceId:'1',targetId:'3',kind:'logical',status:'pending'},{id:'c',sourceId:'2',targetId:'3',kind:'physical',status:'confirmed'},{id:'d',sourceId:'1',targetId:'outside',kind:'logical',status:'pending'}];
- const result=projectTopology(devices,models,[],[],links,true,new Set());assert.equal(result.nodes.length,2);const group=result.nodes.find(n=>n.grouped);assert.equal(result.internal.get(group.id),1);assert.deepEqual(result.edges[0].links.map(l=>l.id),['b','c']);assert.equal(result.nodes.flatMap(n=>n.deviceIds).length,3);
+ const result=projectTopology(devices,models,[],[],links,true,new Set());assert.equal(result.nodes.length,3);assert.equal(result.nodes.some(n=>n.grouped),false);assert.deepEqual(result.edges.map(e=>e.links[0].id),['a','b','c']);assert.equal(result.nodes.flatMap(n=>n.deviceIds).length,3);
 });
 test('same-model devices assigned to different display layers do not merge',()=>{
  const devices=[{id:'a',name:'A',modelId:'m'},{id:'b',name:'B',modelId:'m'}],models=[{id:'m',name:'Server',role:'server'}],network={id:'n',deviceIds:['a','b'],layers:[{id:'edge',name:'边界层'},{id:'app',name:'应用层'}],deviceLayers:{a:'edge',b:'app'}};
  const result=projectTopology(devices,models,[network],[network],[],true,new Set());assert.equal(result.nodes.length,2);assert.equal(result.nodes.find(n=>n.id==='a').layerId,'edge');assert.equal(result.nodes.find(n=>n.id==='b').layerId,'app');
  const fallback=projectTopology(devices,models,[{...network,deviceLayers:{}}],[network],[],true,new Set());assert.equal(fallback.nodes.length,1);assert.equal(fallback.nodes[0].layerId,'app');
+});
+
+test('same-model servers with different uplinks stay separate; core peers never merge',()=>{
+ const models=[{id:'srv',role:'server',name:'server'},{id:'core',role:'core',name:'core'}],devices=[{id:'a',name:'a',modelId:'srv'},{id:'b',name:'b',modelId:'srv'},{id:'c',name:'c',modelId:'core'},{id:'d',name:'d',modelId:'core'}];
+ const links=[{id:'ac',sourceId:'a',targetId:'c',kind:'physical',status:'confirmed'},{id:'bd',sourceId:'b',targetId:'d',kind:'physical',status:'confirmed'}];
+ const result=projectTopology(devices,models,[],[],links,true,new Set());assert.equal(result.nodes.length,4);
 });

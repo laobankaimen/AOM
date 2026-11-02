@@ -494,9 +494,38 @@ func (a *API) networkLayers(w http.ResponseWriter, r *http.Request) {
 		if n == nil {
 			return "", fmt.Errorf("网络不存在")
 		}
+		oldLayers := append([]core.NetworkLayer(nil), core.NetworkLayers(n)...)
+		oldAssignments := n.DeviceLayers
+		effective := func(layers []core.NetworkLayer, assignments map[string]string, deviceID string) (string, int) {
+			id := assignments[deviceID]
+			if id == "" {
+				role := ""
+				if d := s.Device(deviceID); d != nil {
+					if m := s.Model(d.ModelID); m != nil {
+						role = m.Role
+					}
+				}
+				id = map[string]string{"core": "core", "aggregation": "aggregation", "access": "access", "management": "access", "server": "compute", "storage": "compute"}[role]
+			}
+			for i, layer := range layers {
+				if layer.ID == id {
+					return id, i
+				}
+			}
+			if len(layers) == 0 {
+				return "", -1
+			}
+			return layers[len(layers)-1].ID, len(layers) - 1
+		}
 		n.Layers = req.Layers
 		n.DeviceLayers = req.DeviceLayers
-		n.DevicePositions = nil
+		for _, deviceID := range n.DeviceIDs {
+			beforeID, beforeIndex := effective(oldLayers, oldAssignments, deviceID)
+			afterID, afterIndex := effective(core.NetworkLayers(n), n.DeviceLayers, deviceID)
+			if beforeID != afterID || beforeIndex != afterIndex {
+				delete(n.DevicePositions, deviceID)
+			}
+		}
 		return "设置网络显示层：" + n.Name, core.ValidateNetworkLayers(n)
 	})
 	if err != nil {

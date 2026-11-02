@@ -1,5 +1,5 @@
 import {expect,type Page} from '@playwright/test';
-export async function enterRoom(page:Page,name:string){await page.getByRole('button',{name:`进入机房 ${name}`,exact:true}).click();await expect(page.getByRole('heading',{name:'微模块总览',exact:true})).toBeVisible()}
+export async function enterRoom(page:Page,name:string){await page.getByRole('link',{name:`进入机房 ${name}`,exact:true}).click();await expect(page.getByRole('heading',{name:'微模块总览',exact:true})).toBeVisible()}
 export async function enterModule(page:Page,name:string){const map=page.getByRole('group',{name:'机房微模块位置图',exact:true});if(await map.count()){await map.getByRole('button',{name:`选择布局模块 ${name}`,exact:true}).click();await page.getByRole('button',{name:'进入模块',exact:true}).click()}else{await page.getByRole('button',{name:`进入微模块 ${name}`,exact:true}).click()}await expect(page.getByRole('group',{name:`${name}俯视图`,exact:true})).toBeVisible()}
 
 export async function manualCreate(page:Page){await page.locator('.heading-actions .action-menu summary').click();await page.getByRole('button',{name:'手动创建机房',exact:true}).click()}

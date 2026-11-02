@@ -2,12 +2,14 @@ import {layerOf} from './networkLayers';
 import type {Device,Model,NetworkSegment,DeviceLink,CanvasPoint} from './model';
 export interface TopologyNode {id:string;name:string;role:string;networkId:string;networkIds:string[];deviceIds:string[];groupKey:string;grouped:boolean;layerId:string;device?:Device;position?:CanvasPoint}
 export function projectTopology(devices:Device[],models:Model[],networks:NetworkSegment[],allNetworks:NetworkSegment[],links:DeviceLink[],merge:boolean,expanded:ReadonlySet<string>){
+ const connections=new Map<string,string[]>();
+ for(const link of links){for(const [id,peer] of [[link.sourceId,link.targetId],[link.targetId,link.sourceId]]){if(!connections.has(id))connections.set(id,[]);connections.get(id)!.push(JSON.stringify([peer,link.kind,link.status,link.speedGbps||0,link.medium||'']))}}
  const buckets=new Map<string,{key:string;name:string;role:string;networkId:string;networkIds:string[];layerId:string;devices:Device[]}>();
  for(const d of devices){
   const model=models.find(m=>m.id===d.modelId),memberships=allNetworks.filter(n=>n.deviceIds.includes(d.id)).map(n=>n.id).sort();
   const networkId=networks.find(n=>n.deviceIds.includes(d.id))?.id||'';
   const layerId=layerOf(networks.find(n=>n.id===networkId),d.id,model?.role||'server');
-  const key=JSON.stringify([d.modelId,memberships,networkId,layerId]);
+  const key=JSON.stringify([d.modelId,memberships,networkId,layerId,(connections.get(d.id)||[]).sort(),['core','aggregation'].includes(model?.role||'')?d.id:'']);
   if(!buckets.has(key))buckets.set(key,{key,name:model?.name||d.name,role:model?.role||'server',networkId,networkIds:memberships,layerId,devices:[]});
   buckets.get(key)!.devices.push(d);
  }

@@ -1,5 +1,5 @@
 export interface LayoutItem {id:string;role:string;layerId?:string;position?:{x:number;y:number}}
-export interface LayoutGroup {id:string;items:LayoutItem[];layers?:{id:string;name:string}[];position?:{x:number;y:number}}
+export interface LayoutGroup {preserveEmpty?:boolean;id:string;items:LayoutItem[];layers?:{id:string;name:string}[];position?:{x:number;y:number}}
 export const topologyLevels=['核心层','汇聚层','接入层','计算 / 存储','其他设备'];
 export function topologyLevel(role:string){return ({core:0,aggregation:1,access:2,management:2,server:3,storage:3,infra:4} as Record<string,number>)[role]??4}
 const valid=(p:LayoutItem['position'])=>!!p&&Number.isFinite(p.x)&&Number.isFinite(p.y)&&p.x>=0&&p.y>=0&&p.x<=10000&&p.y<=10000;
@@ -7,7 +7,7 @@ const valid=(p:LayoutItem['position'])=>!!p&&Number.isFinite(p.x)&&Number.isFini
 export function compactTopologyLayout(groups:LayoutGroup[],availableWidth:number,nodeWidth=184,nodeHeight=98,maxColumns=3){
  const gapX=24,gapY=36,padding=20,header=88;
  const usable=Math.max(nodeWidth+padding*2+40,Number.isFinite(availableWidth)?availableWidth:1000);
- const populated=groups.filter(g=>g.items.length);
+ const populated=groups.filter(g=>g.items.length||g.preserveEmpty);
  const lanes=populated.map(g=>{
   const maxPerRole=Math.max(1,...[0,1,2,3,4].map(r=>g.items.filter(n=>topologyLevel(n.role)===r).length));
   const columns=Math.max(1,Math.min(maxColumns,maxPerRole,Math.floor((usable-80)/(nodeWidth+gapX))));

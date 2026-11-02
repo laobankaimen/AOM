@@ -12,7 +12,7 @@ test('图形移动不产生审计，设备机位保留精简明细，历史整�
  const target=s.racks.find(r=>r.moduleId===module.id&&r.id!==device.rackId)!;const moved=await request.post(`/api/devices/${device.id}/placement`,{data:{revision:s.revision,rackId:target.id,startU:10}});expect(moved.ok()).toBe(true);s=await moved.json();
  audits=await(await request.get('/api/audits')).json();const entry=audits.find((a:{revision:number})=>a.revision===s.revision);expect(entry.action).toBe('device.place');
  const detail=await(await request.get('/api/audits/'+entry.id)).json();expect(detail.before.devices).toHaveLength(1);expect(detail.after.devices).toHaveLength(1);expect(detail.before.devices[0].rackId).toBe(device.rackId);expect(detail.after.devices[0].rackId).toBe(target.id);expect(detail.after.format).toBe('changed-records-v1');expect(detail.after.modules).toBeUndefined();
- await page.getByRole('button',{name:'刷新数据',exact:true}).click();await page.getByRole('navigation',{name:'主导航'}).getByRole('button',{name:'变更审计',exact:true}).click();await expect(page.getByText('只记录关键业务变更',{exact:true})).toBeVisible();
+ await page.getByRole('button',{name:'刷新数据',exact:true}).click();await page.getByRole('navigation',{name:'主导航'}).getByRole('link',{name:'变更审计',exact:true}).click();await expect(page.getByText('只记录关键业务变更',{exact:true})).toBeVisible();
  await page.getByRole('button',{name:'精简历史记录',exact:true}).click();await expect(page.getByRole('status')).toContainText('审计正文减少');
  expect(await(await request.get('/api/state')).json()).toEqual(s);
  const unchanged=await(await request.get('/api/audits/'+entry.id)).json();expect(unchanged).toEqual(detail);

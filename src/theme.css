@@ -559,3 +559,54 @@ body:has(.app-shell.hide-sidebar) .editor-page { left:0; }
 .deletion-actions>.deletion-feedback .error-banner { margin:0; padding:10px; font-size:12px; }
 .deletion-actions>div:last-child { margin-left:auto; }
 @media(max-width:760px){.deletion-impact{grid-template-columns:repeat(2,minmax(0,1fr))}.deletion-actions{padding:12px 16px}.deletion-actions>div:last-child{width:100%;justify-content:flex-end}}
+
+/* Desktop audit: preserve the palette and enlarge actual hit targets. */
+.editor-fieldset { min-width:0; margin:0; border:0; width:100%; }
+.editor-page-body.editor-fieldset { border:1px solid var(--border); }
+.saving-status { color:var(--accent); padding:10px 0; }
+.side-icon { width:28px; height:28px; flex-shrink:0; display:inline-flex; align-items:center; justify-content:center; border-radius:5px; }
+.side-icon:hover { color:white; background:#203d67; }
+.canvas-controls .zoom-controls button { min-width:32px; min-height:32px; }
+.skip-link { position:fixed; top:8px; left:230px; padding:10px 16px; background:white; color:var(--accent); border:2px solid var(--focus); border-radius:6px; z-index:200; transform:translateY(-160%); }
+.skip-link:focus { transform:translateY(0); }
+.module-migration { margin:12px 16px; }
+.module-migration form { display:flex; align-items:flex-end; gap:12px; padding:12px 0; }
+.module-migration label { display:grid; gap:6px; }
+.init-mode-tabs,.empty-actions { display:flex; gap:10px; margin:16px 0; }
+.init-mode-tabs [aria-pressed=true] { color:var(--accent); background:var(--accent-soft); border-color:var(--accent); }
+.preview-count { margin:10px 0; color:var(--text-secondary); }
+.display-hidden-hint { font-size:12px; color:var(--text-muted); }
+.nav-item { display:flex; align-items:center; }
+a[aria-disabled=true] { cursor:not-allowed; opacity:.5; }
+.hierarchy-crumbs a,.topology-breadcrumb-trail a { display:inline-flex; align-items:center; border:0; border-radius:4px; padding:4px; color:var(--text-secondary); font-size:12px; }
+.hierarchy-crumbs a:hover,.topology-breadcrumb-trail a:hover { color:var(--accent); background:var(--accent-soft); }
+.home-room-card { display:flex; flex-direction:column; }
+.home-room-card .home-room-visual,.home-room-card .home-room-name,.home-room-card .home-room-footer { width:100%; }
+.home-room-card .home-room-name { text-align:left; }
+.home-room-grid.few-rooms { grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); }
+.few-rooms .home-room-card { display:grid; grid-template-columns:140px minmax(0,1fr); grid-template-rows:auto auto auto; align-items:center; column-gap:16px; }
+.few-rooms .home-room-visual { grid-row:1 / 4; height:100%; min-height:150px; }
+.few-rooms .home-room-name { padding:16px 16px 0 0; }
+.few-rooms .home-room-card>p { margin:0; padding:8px 16px 8px 0; }
+.few-rooms .home-room-footer { padding:10px 16px 14px 0; background:transparent; border:0; }
+.site-link { display:flex; }
+.auth-card>.editor-fieldset { padding:0; display:flex; flex-direction:column; gap:16px; }
+.network-drop-invalid>rect { fill:#fef2f2!important; stroke:#b91c1c!important; stroke-width:3; }
+.resource-scope { margin:0 0 14px; color:var(--text-secondary); font-size:13px; }
+.template-actual-preview { position:relative; padding:12px; }
+.template-actual-preview svg { width:100%; height:115px; }
+.template-actual-preview>span { font-size:11px; color:var(--text-secondary); }
+@media(min-width:1100px) {
+ .canvas-first .topology-main.inspector-visible { padding-right:334px; }
+ .canvas-first .topology-main.navigation-visible { padding-left:366px; }
+ .canvas-first .topology-main.inspector-visible.navigation-visible { padding-left:0; }
+}
+.floor-scroll { cursor:grab; }
+.topology-node.is-search-match>rect { stroke:#92400e; stroke-width:2.5; }
+.topology-node.is-search-neighbor { opacity:.65; }
+.list-pagination { display:flex; align-items:center; gap:12px; padding:12px; }
+.auth-card>.editor-fieldset { display:block; }
+.auth-card>.editor-fieldset>p { font-size:12px; color:#64748b; line-height:1.8; margin-bottom:20px; }
+.auth-card>.editor-fieldset>.primary { margin-top:13px; min-height:43px; }
+.auth-card>.editor-fieldset>.secondary { margin-top:10px; }
+.unassigned-toggle[aria-pressed=true] { color:var(--accent); border-color:var(--accent-border); background:var(--accent-soft); }

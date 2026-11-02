@@ -32,7 +32,7 @@ test('拓扑图与分组图适应宽高，放大不重新排列设备',async({pa
  let s:State=await (await request.get('/api/state')).json();const response=await request.post('/api/plans',{data:{revision:s.revision,plan:{project_name:'拓扑缩放验收',site_name:'拓扑机房',modules:[{name:'拓扑模块',type:'single',rack_count:2,u_height:42}],infra:{power:0,ac:0,env:0}}}});expect(response.ok()).toBe(true);s=await response.json();const project=s.projects.find(p=>p.name==='拓扑缩放验收')!,room=s.sites.find(r=>r.projectId===project.id)!,module=s.modules.find(m=>m.siteId===room.id)!;
  const imported=await request.post('/api/import/commit',{data:{revision:s.revision,moduleId:module.id,content:'model,quantity,name,asset_prefix\nKunTai R722 K2,12,缩放服务器,SCALE-SERVER\nRZ2805-48YS8CQ,2,缩放交换机,SCALE-SW'}});expect(imported.ok()).toBe(true);s=await imported.json();
  const network=await request.post('/api/networks',{data:{revision:s.revision,network:{projectId:project.id,name:'缩放网络',purpose:'business',color:'#497cda',deviceIds:s.devices.filter(d=>d.moduleId===module.id).map(d=>d.id)}}});expect(network.ok()).toBe(true);s=await network.json();
- await page.goto('/');await page.getByRole('combobox',{name:'选择项目',exact:true}).selectOption(project.id);await page.getByRole('button',{name:'网络拓扑',exact:true}).click();
+ await page.goto('/');await page.getByRole('combobox',{name:'选择项目',exact:true}).selectOption(project.id);await page.getByRole('link',{name:'网络拓扑',exact:true}).click();
  for(const viewport of [{width:1440,height:1000},{width:3200,height:1800},{width:390,height:844}]){
   await page.setViewportSize(viewport);
   for(const mode of ['detail','auto']){

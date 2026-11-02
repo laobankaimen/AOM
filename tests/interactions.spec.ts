@@ -34,11 +34,11 @@ test('设备跨柜拖放、冲突回滚、取消拖动与面包屑返回',async(
  let after=await getState(request);expect(after.devices.find(d=>d.id===devices[0].id)?.startU).toBe(10);const revision=after.revision;
  const conflictStart=await pointAt(page,racks[1].id,10),conflictEnd=await pointAt(page,racks[0].id,3);
  await page.mouse.move(conflictStart.x,conflictStart.y);await page.mouse.down();await page.mouse.move(conflictEnd.x,conflictEnd.y,{steps:14});await expect(page.locator('.drag-status')).toContainText('已占用');await page.mouse.up();
- await expect(page.locator('.toast-message')).toContainText('U位冲突');after=await getState(request);expect(after.revision).toBe(revision);expect(after.devices.find(d=>d.id===devices[0].id)?.rackId).toBe(racks[1].id);
+ await expect(page.locator('.drag-status')).toContainText('已保留原机位');after=await getState(request);expect(after.revision).toBe(revision);expect(after.devices.find(d=>d.id===devices[0].id)?.rackId).toBe(racks[1].id);
  const cancelStart=await pointAt(page,racks[1].id,10),cancelEnd=await pointAt(page,racks[0].id,15);await page.mouse.move(cancelStart.x,cancelStart.y);await page.mouse.down();await page.mouse.move(cancelEnd.x,cancelEnd.y,{steps:10});await page.keyboard.press('Escape');await page.mouse.up();expect((await getState(request)).revision).toBe(revision);
  const crumbs=page.getByRole('navigation',{name:'位置导航'});await expect(crumbs).toContainText(room.name);await expect(crumbs).toContainText(module.name);await expect(crumbs).toContainText(racks[1].name);
  await page.locator('.selected-device').getByRole('button',{name:'编辑详细信息',exact:true}).click();const editor=page.getByRole('region',{name:'编辑设备 / 调整机位',exact:true});await expect(editor).toBeVisible();await expect(page.getByRole('dialog')).toHaveCount(0);await expect(crumbs).toContainText('编辑设备');
- await crumbs.getByRole('button',{name:`返回微模块 ${module.name}`,exact:true}).click();await expect(editor).toHaveCount(0);await expect(page.getByRole('group',{name:`${module.name}俯视图`,exact:true})).toBeVisible();
+ await crumbs.getByRole('link',{name:`返回微模块 ${module.name}`,exact:true}).click();await expect(editor).toHaveCount(0);await expect(page.getByRole('group',{name:`${module.name}俯视图`,exact:true})).toBeVisible();
 });
 
 test('长柜列紧凑总览、目标柜导航、双柜操作与详情编辑页',async({page,request})=>{

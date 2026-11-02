@@ -30,6 +30,7 @@ func newApplication(store *core.Store, web fs.FS) http.Handler {
 	mux.HandleFunc("POST /api/networks/{id}/layout-position", a.networkLayoutPosition)
 	mux.HandleFunc("POST /api/networks/{id}/position", a.networkPosition)
 	mux.HandleFunc("POST /api/network-members", a.networkMember)
+	mux.HandleFunc("POST /api/topology/restore-membership", a.restoreMembership)
 	mux.HandleFunc("PUT /api/networks/{id}", a.network)
 	mux.HandleFunc("PUT /api/networks/{id}/layers", a.networkLayers)
 	mux.HandleFunc("POST /api/networks/{id}/layer-members", a.layerMembers)
@@ -241,6 +242,7 @@ func (a *API) device(w http.ResponseWriter, r *http.Request) {
 		Revision  int         `json:"revision"`
 		Device    core.Device `json:"device"`
 		AutoPlace bool        `json:"autoPlace"`
+		Detach    bool        `json:"detach"`
 	}
 	if !decode(w, r, &req) {
 		return
@@ -272,6 +274,27 @@ func (a *API) device(w http.ResponseWriter, r *http.Request) {
 		}
 		tag := existing.AssetTag
 		if r.Method == "DELETE" {
+			if req.Detach {
+				links := make([]core.Link, 0, len(s.Links))
+				for _, l := range s.Links {
+					if l.SourceID != existing.ID && l.TargetID != existing.ID {
+						links = append(links, l)
+					}
+				}
+				s.Links = links
+				for i := range s.Networks {
+					n := &s.Networks[i]
+					ids := make([]string, 0, len(n.DeviceIDs))
+					for _, id := range n.DeviceIDs {
+						if id != existing.ID {
+							ids = append(ids, id)
+						}
+					}
+					n.DeviceIDs = ids
+					delete(n.DeviceLayers, existing.ID)
+					delete(n.DevicePositions, existing.ID)
+				}
+			}
 			for _, l := range s.Links {
 				if l.SourceID == existing.ID || l.TargetID == existing.ID {
 					return "", fmt.Errorf("设备仍有链路，请先删除或调整连接")
@@ -378,6 +401,39 @@ func (a *API) exportCSV(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Content-Type", "text/csv; charset=utf-8")
+	// The unfiltered endpoint remains available for explicit full exports.
+	if r.URL.Query().Get("scope") != "all" {
+		projectID, siteID := r.URL.Query().Get("projectId"), r.URL.Query().Get("siteId")
+		query, status := strings.ToLower(r.URL.Query().Get("query")), r.URL.Query().Get("status")
+		filtered := make([]core.Device, 0, len(s.Devices))
+		for _, d := range s.Devices {
+			var roomID, ownerID string
+			for _, m := range s.Modules {
+				if m.ID == d.ModuleID {
+					roomID = m.SiteID
+					break
+				}
+			}
+			for _, room := range s.Sites {
+				if room.ID == roomID {
+					ownerID = room.ProjectID
+					break
+				}
+			}
+			if projectID != "" && ownerID != projectID || siteID != "" && roomID != siteID || status != "" && d.Status != status {
+				continue
+			}
+			modelName := ""
+			if m := s.Model(d.ModelID); m != nil {
+				modelName = m.Name
+			}
+			if query != "" && !strings.Contains(strings.ToLower(strings.Join([]string{d.Name, d.AssetTag, d.IP, d.SN, modelName}, " ")), query) {
+				continue
+			}
+			filtered = append(filtered, d)
+		}
+		s.Devices = filtered
+	}
 	w.Header().Set("Content-Disposition", `attachment; filename="aom-devices.csv"`)
 	_, _ = io.WriteString(w, core.ExportCSV(s))
 }

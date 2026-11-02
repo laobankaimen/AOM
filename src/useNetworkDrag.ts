@@ -6,6 +6,7 @@ export function useNetworkDrag(svg:Ref<SVGSVGElement|undefined>,canvas:Ref<HTMLE
  const active=shallowRef<{id:string;pointer:number;capture:Element;matrix:DOMMatrix;start:Point;origin:Point;screen:Point;scroll:Point;moved:boolean}|null>(null);
  const preview=ref<{id:string;position:Point}|null>(null),pending=ref<{id:string;position:Point}|null>(null);
  let frame=0,last:Point|null=null;
+ const invalid=computed(()=>!!preview.value&&!!overlaps(preview.value.id,preview.value.position));
  const dragging=computed(()=>!!active.value?.moved);
  function offset(id:string){const p=preview.value?.id===id?preview.value:pending.value?.id===id?pending.value:null;const lane=lanes().find(l=>l.id===id);return p&&lane?{x:p.position.x-lane.x,y:p.position.y-lane.y}:{x:0,y:0}}
  function overlaps(id:string,p:Point){const lane=lanes().find(l=>l.id===id);return lane?.width&&lane.height&&lanes().some(l=>l.id!==id&&l.width&&l.height&&p.x<l.x+l.width+16&&p.x+lane.width!+16>l.x&&p.y<l.y+l.height+16&&p.y+lane.height!+16>l.y)}
@@ -45,5 +46,5 @@ export function useNetworkDrag(svg:Ref<SVGSVGElement|undefined>,canvas:Ref<HTMLE
  }
  watch(enabled,value=>{if(value&&!active.value)pending.value=null});
  const escape=(e:KeyboardEvent)=>{if(e.key==='Escape')cancel()};onMounted(()=>window.addEventListener('keydown',escape));onBeforeUnmount(()=>{window.removeEventListener('keydown',escape);cancel()});onDeactivated(cancel);
- return {active,dragging,offset,down,move,up,cancel,key};
+ return {active,dragging,invalid,offset,down,move,up,cancel,key};
 }

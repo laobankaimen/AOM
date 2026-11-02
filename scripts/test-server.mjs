@@ -4,10 +4,14 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import {randomBytes} from 'node:crypto';
 mkdirSync('.cache', { recursive: true });
-const executable = path.resolve('.cache', process.platform === 'win32' ? 'aom-e2e.exe' : 'aom-e2e');
+// A supplied binary lets the same browser suite verify the shipped program.
+const prebuilt = process.env.AOM_E2E_BINARY;
+const executable = prebuilt ? path.resolve(prebuilt) : path.resolve('.cache', process.platform === 'win32' ? 'aom-e2e.exe' : 'aom-e2e');
 const env = { ...process.env, GOCACHE: process.env.GOCACHE || path.join(tmpdir(), 'aom-go-cache'), CGO_ENABLED: '0' };
-const build = spawnSync('go', ['build', '-o', executable, './cmd/aom'], { stdio: 'inherit', env });
-if (build.status !== 0) process.exit(build.status || 1);
+if (!prebuilt) {
+ const build = spawnSync('go', ['build', '-o', executable, './cmd/aom'], { stdio: 'inherit', env });
+ if (build.status !== 0) process.exit(build.status || 1);
+}
 const data = mkdtempSync(path.join(tmpdir(), 'aom-e2e-'));
 const setupToken=randomBytes(32).toString('base64url');
 writeFileSync('.cache/e2e-setup-token',setupToken,{mode:0o600});
