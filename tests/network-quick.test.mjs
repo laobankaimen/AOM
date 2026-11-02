@@ -18,10 +18,10 @@ test('merged graph renders counts, selectable cards and finite geometry',async()
  assert.match(html,/设备连接与网络分区图/);assert.match(html,/展开 计算型号 2台/);assert.ok(!html.includes('NaN'));assert.ok(!html.includes('undefined'));assert.match(html,/stroke-dasharray="5 5"/);
 });
 
-test('device graph renders only populated networks with tight finite bounds',async()=>{
+test('device graph renders only populated networks and a full-size finite viewport',async()=>{
  const servers=Array.from({length:3},(_,i)=>({...state.devices[1],id:'srv'+i,name:'服务器'+i}));
  const net={...network,deviceIds:servers.map(d=>d.id)};
  const html=await renderToString(createSSRApp({render:()=>h(Graph,{state:{...state,devices:servers},devices:servers,networks:[{...network,id:'empty',name:'空网络',deviceIds:[]},net],links:[],networkId:'',selectedDevice:'',selectedLink:'',zoom:85})}));
  assert.ok(!html.includes('data-topology-lane="empty"'));assert.match(html,/data-topology-lane="n"/);
- const bounds=html.match(/viewBox="0 0 (\d+) (\d+)"/);assert.ok(bounds);assert.ok(Number(bounds[2])<300);assert.ok(!html.includes('NaN'));
+ const bounds=html.match(/viewBox="0 0 ([\d.]+) ([\d.]+)"/);assert.ok(bounds);assert.ok(Number(bounds[2])>=300);assert.ok(!html.includes('NaN'));
 });

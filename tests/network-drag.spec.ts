@@ -22,7 +22,7 @@ test('详情关闭可恢复，网络整组拖动在两种视图中保存且不�
   await handle.scrollIntoViewIfNeeded();const rect=(await handle.boundingBox())!,x=rect.x+rect.width*.35,y=rect.y+rect.height*.45;
   const revision=(await snapshot()).revision,viewBox=await svg.getAttribute('viewBox'),initialX=Number(await lane.locator(':scope>rect').first().getAttribute('x'));
   const paths=await svg.locator('path[d]').evaluateAll(nodes=>nodes.map(n=>n.getAttribute('d')));
-  await page.mouse.move(x,y);await page.mouse.down();await page.mouse.move(x+25,y+18,{steps:10});await expect(lane).toHaveClass(/network-dragging/);
+  await page.mouse.move(x,y);await page.mouse.down();await page.mouse.move(x+3,y+18,{steps:10});await expect(lane).toHaveClass(/network-dragging/);
   await expect.poll(async()=>Number(await lane.locator(':scope>rect').first().getAttribute('x'))).toBeGreaterThan(initialX);expect(await svg.getAttribute('viewBox')).toBe(viewBox);expect((await snapshot()).revision).toBe(revision);
   const afterPaths=await svg.locator('path[d]').evaluateAll(nodes=>nodes.map(n=>n.getAttribute('d')));expect(afterPaths).not.toEqual(paths);
   const target={x:Number(await lane.locator(':scope>rect').first().getAttribute('x')),y:Number(await lane.locator(':scope>rect').first().getAttribute('y'))};
@@ -31,8 +31,8 @@ test('详情关闭可恢复，网络整组拖动在两种视图中保存且不�
   await handle.scrollIntoViewIfNeeded();const b=(await handle.boundingBox())!;await page.mouse.move(b.x+40,b.y+20);await page.mouse.down();await page.mouse.move(b.x+58,b.y+32,{steps:8});await expect(lane).toHaveClass(/network-dragging/);await page.keyboard.press('Escape');await page.mouse.up();expect((await snapshot()).revision).toBe(revision+1);expect((await snapshot()).networks.find(n=>n.id===a.id)?.position).toEqual(target);
  }
  s=await snapshot();expect(s.devices).toEqual(original.devices);expect(s.links).toEqual(original.links);expect(s.networks.find(n=>n.id===a.id)?.deviceIds).toEqual(a.deviceIds);expect(s.networks.find(n=>n.id===a.id)?.parentId).toBe(a.parentId);expect(await(await request.get('/api/audits')).json()).toEqual(audits);
- const saved=s.networks.find(n=>n.id===a.id)!.position!;await page.reload();const handle=page.getByRole('button',{name:'移动网络分区 网络A',exact:true});await expect(handle).toBeVisible();await handle.focus();await handle.press('Alt+ArrowRight');await expect.poll(async()=>(await snapshot()).networks.find(n=>n.id===a.id)?.position?.x).toBe(saved.x+12);
- await openCanvasMenu(page);await page.getByRole('button',{name:'自动排列',exact:true}).click();await expect.poll(async()=>(await snapshot()).networks.find(n=>n.id===a.id)?.position).toBeUndefined();expect(await(await request.get('/api/audits')).json()).toEqual(audits);expect(errors).toEqual([]);
+ const saved=s.networks.find(n=>n.id===a.id)!.position!;await page.reload();const handle=page.getByRole('button',{name:'移动网络分区 网络A',exact:true});await expect(handle).toBeVisible();await handle.focus();await handle.press('Alt+ArrowDown');await expect.poll(async()=>(await snapshot()).networks.find(n=>n.id===a.id)?.position?.y).toBe(saved.y+12);
+ await openCanvasMenu(page);await page.getByRole('button',{name:'自动排列',exact:true}).click();await expect.poll(async()=>(await snapshot()).networks.find(n=>n.id===a.id)?.position?.x).toBe(20);expect(await(await request.get('/api/audits')).json()).toEqual(audits);expect(errors).toEqual([]);
 });
 
 test('机柜与设施详情收起后保留选择，可重新显示或点击对象打开',async({page,request})=>{

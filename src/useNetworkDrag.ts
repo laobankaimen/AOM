@@ -1,13 +1,14 @@
 import {computed,ref,shallowRef,onMounted,onBeforeUnmount,onDeactivated,watch,type Ref} from 'vue';
 import {finiteRoomMatrix,transformRoomPointer} from './roomLayout';
-interface Lane {id:string;x:number;y:number}
+interface Lane {id:string;x:number;y:number;width?:number;height?:number}
 interface Point {x:number;y:number}
-export function useNetworkDrag(svg:Ref<SVGSVGElement|undefined>,canvas:Ref<HTMLElement|undefined>,lanes:()=>Lane[],enabled:()=>boolean,save:(id:string,position:Point)=>void){
+export function useNetworkDrag(svg:Ref<SVGSVGElement|undefined>,canvas:Ref<HTMLElement|undefined>,lanes:()=>Lane[],enabled:()=>boolean,save:(id:string,position:Point)=>void,notice:(text:string)=>void=()=>{}){
  const active=shallowRef<{id:string;pointer:number;capture:Element;matrix:DOMMatrix;start:Point;origin:Point;screen:Point;scroll:Point;moved:boolean}|null>(null);
  const preview=ref<{id:string;position:Point}|null>(null),pending=ref<{id:string;position:Point}|null>(null);
  let frame=0,last:Point|null=null;
  const dragging=computed(()=>!!active.value?.moved);
  function offset(id:string){const p=preview.value?.id===id?preview.value:pending.value?.id===id?pending.value:null;const lane=lanes().find(l=>l.id===id);return p&&lane?{x:p.position.x-lane.x,y:p.position.y-lane.y}:{x:0,y:0}}
+ function overlaps(id:string,p:Point){const lane=lanes().find(l=>l.id===id);return lane?.width&&lane.height&&lanes().some(l=>l.id!==id&&l.width&&l.height&&p.x<l.x+l.width+16&&p.x+lane.width!+16>l.x&&p.y<l.y+l.height+16&&p.y+lane.height!+16>l.y)}
  function down(e:PointerEvent,id:string){
   if(e.button!==0||!enabled()||active.value||pending.value||!id||id==='unassigned')return;
   const lane=lanes().find(l=>l.id===id),matrix=svg.value?.getScreenCTM()?.inverse();if(!lane||!matrix||!finiteRoomMatrix(matrix))return;
@@ -34,13 +35,13 @@ export function useNetworkDrag(svg:Ref<SVGSVGElement|undefined>,canvas:Ref<HTMLE
   last={x:e.clientX,y:e.clientY};cancelAnimationFrame(frame);paint();const p=preview.value,rect=canvas.value?.getBoundingClientRect();
   const inside=rect&&e.clientX>=rect.left&&e.clientX<=rect.right&&e.clientY>=rect.top&&e.clientY<=rect.bottom;
   const changed=p&&(p.position.x!==a.origin.x||p.position.y!==a.origin.y);clear();
-  if(inside&&changed&&enabled()){pending.value=p;save(a.id,p.position)}
+  if(inside&&changed&&enabled()){if(overlaps(a.id,p.position)){notice('网络分区不能重叠，本次移动已取消；可拖到空白位置');return}pending.value=p;save(a.id,p.position)}
  }
  function key(e:KeyboardEvent,id:string){
   if(!enabled()||pending.value||active.value||!e.altKey||!['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(e.key))return;
   const lane=lanes().find(l=>l.id===id);if(!lane||!id||id==='unassigned')return;e.preventDefault();
   const position={x:Math.max(0,Math.min(10000,lane.x+(e.key==='ArrowLeft'?-12:e.key==='ArrowRight'?12:0))),y:Math.max(0,Math.min(10000,lane.y+(e.key==='ArrowUp'?-12:e.key==='ArrowDown'?12:0)))};
-  if(position.x===lane.x&&position.y===lane.y)return;pending.value={id,position};save(id,position);
+  if(position.x===lane.x&&position.y===lane.y)return;if(overlaps(id,position)){notice('位置与其他网络重叠，未移动');return}pending.value={id,position};save(id,position);
  }
  watch(enabled,value=>{if(value&&!active.value)pending.value=null});
  const escape=(e:KeyboardEvent)=>{if(e.key==='Escape')cancel()};onMounted(()=>window.addEventListener('keydown',escape));onBeforeUnmount(()=>{window.removeEventListener('keydown',escape);cancel()});onDeactivated(cancel);

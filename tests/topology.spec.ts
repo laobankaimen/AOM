@@ -133,7 +133,7 @@ test('多网络自动排列紧凑，界面收起恢复不修改业务数据',asy
  await page.reload();await page.getByRole('combobox',{name:'选择项目',exact:true}).selectOption(project.id);await page.getByRole('navigation',{name:'主导航'}).getByRole('button',{name:'网络拓扑',exact:true}).click();
  await expect(page.locator(`[data-topology-lane="${empty.id}"]`)).toHaveCount(0);
  await openCanvasMenu(page);await page.getByRole('button',{name:'自动排列',exact:true}).click();await expect.poll(async()=>(await state(request)).revision).toBe(s.revision+1);
- let after=await state(request);expect(after.links).toEqual(s.links);expect(after.devices).toEqual(s.devices);expect(after.networks.find(n=>n.id===net.id)?.devicePositions?.[devices[2].id]).toBeUndefined();
+ let after=await state(request);expect(after.links).toEqual(s.links);expect(after.devices).toEqual(s.devices);expect(after.networks.find(n=>n.id===net.id)?.devicePositions?.[devices[2].id]).toEqual({x:0,y:0});
  const svg=page.getByRole('group',{name:'设备连接与网络分区图',exact:true});
  const viewBox=(await svg.getAttribute('viewBox'))!.split(' ').map(Number);expect(viewBox[2]).toBeLessThan(1400);expect(viewBox[3]).toBeLessThan(1000);
  const server=page.getByRole('button',{name:'查看拓扑设备 服务器测试',exact:true});await expect(server).toBeVisible();

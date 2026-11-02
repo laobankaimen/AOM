@@ -37,3 +37,7 @@ test('custom layers have ordered drop areas, including empty layers, and overrid
  const r=layout([{id:'n',layers:[{id:'edge',name:'边界层'},{id:'app',name:'应用层'},{id:'empty',name:'预留层'}],items:[{id:'a',role:'server',layerId:'edge'},{id:'b',role:'core',layerId:'app'}]}],900);
  assert.deepEqual(r.lanes[0].bands.map(b=>b.id),['edge','app','empty']);assert.ok(r.nodes.get('a').y<r.nodes.get('b').y);for(const b of r.lanes[0].bands)assert.ok(b.height>0);noOverlap(r);
 });
+test('saved device coordinates cannot lift a lower-layer device into a higher layer',()=>{
+ const r=layout([{id:'n',layers:[{id:'core',name:'核心'},{id:'compute',name:'计算'}],items:[{id:'core',role:'core',layerId:'core',position:{x:0,y:0}},{id:'server',role:'server',layerId:'compute',position:{x:240,y:0}}]}],900);
+ const lane=r.lanes[0],band=lane.bands.find(b=>b.id==='compute');assert.ok(r.nodes.get('server').y>=lane.nodeY+band.top+24);assert.ok(r.nodes.get('server').y>r.nodes.get('core').y);noOverlap(r);
+});

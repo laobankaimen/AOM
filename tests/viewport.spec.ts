@@ -14,8 +14,8 @@ test('宽视口与小屏适应完整画布，放大只调整图形且可恢复',
    await page.getByRole('button',{name:view,exact:true}).click();await page.getByRole('button',{name:'适应机房位置图',exact:true}).click();
    await contained(page,'.room-position-scroll','.room-position-svg');
    for(const n of await page.locator('.room-position-module').all()){const b=(await n.boundingBox())!,a=(await page.locator('.room-position-scroll').boundingBox())!;expect(b.x).toBeGreaterThanOrEqual(a.x-1);expect(b.y+b.height).toBeLessThanOrEqual(a.y+a.height+1)}
-   const before=(await page.locator('.room-position-svg').boundingBox())!;
-   await page.getByRole('button',{name:'放大机房位置图',exact:true}).click();await expect.poll(async()=>(await page.locator('.room-position-svg').boundingBox())!.width).toBeGreaterThan(before.width*1.2);
+   const before=await page.locator('.room-position-svg').evaluate(el=>(el as SVGSVGElement).getScreenCTM()!.a);
+   await page.getByRole('button',{name:'放大机房位置图',exact:true}).click();await expect.poll(()=>page.locator('.room-position-svg').evaluate(el=>(el as SVGSVGElement).getScreenCTM()!.a)).toBeGreaterThan(before*1.2);
    await page.getByRole('button',{name:'适应机房位置图',exact:true}).click();await contained(page,'.room-position-scroll','.room-position-svg');
   }
   const main=(await page.locator('.app-main>main').boundingBox())!,outer=(await page.locator('.app-main').boundingBox())!;expect(main.width).toBeGreaterThan(outer.width*.97);
@@ -38,9 +38,9 @@ test('拓扑图与分组图适应宽高，放大不重新排列设备',async({pa
   for(const mode of ['detail','auto']){
    await page.getByRole('combobox',{name:'拓扑展示方式',exact:true}).selectOption(mode);await page.getByRole('button',{name:'重置拓扑缩放',exact:true}).click();
    const container=mode==='detail'?'.topology-canvas':'.summary-canvas',drawing=container+' svg';await contained(page,container,drawing);
-   const before=(await page.locator(drawing).boundingBox())!,viewBox=await page.locator(drawing).getAttribute('viewBox');
-   await page.getByRole('button',{name:'放大拓扑',exact:true}).click();await expect.poll(async()=>(await page.locator(drawing).boundingBox())!.width).toBeGreaterThan(before.width);
-   expect(await page.locator(drawing).getAttribute('viewBox')).toBe(viewBox);
+   const before=await page.locator(drawing).evaluate(el=>(el as SVGSVGElement).getScreenCTM()!.a),positions=await page.locator(drawing+' [data-network-node]').evaluateAll(nodes=>nodes.map(n=>n.getAttribute('transform')));
+   await page.getByRole('button',{name:'放大拓扑',exact:true}).click();await expect.poll(()=>page.locator(drawing).evaluate(el=>(el as SVGSVGElement).getScreenCTM()!.a)).toBeGreaterThan(before);
+   expect(await page.locator(drawing+' [data-network-node]').evaluateAll(nodes=>nodes.map(n=>n.getAttribute('transform')))).toEqual(positions);
    await page.getByRole('button',{name:'重置拓扑缩放',exact:true}).click();await contained(page,container,drawing);
    expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
   }

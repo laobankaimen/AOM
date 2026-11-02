@@ -1,5 +1,6 @@
 export interface Project { id: string; name: string }
-export interface Site { id: string; name: string; projectId: string }
+export interface RoomEntrance {side:string;offset:number}
+export interface Site { entrance?:RoomEntrance; id: string; name: string; projectId: string }
 export interface Module {roomRotation?:number; roomPosition?:CanvasPoint; productModel: string; point: string; id: string; siteId: string; name: string; type: 'single' | 'double'; rackLeft: number; rackRight: number }
 export interface Rack { id: string; moduleId: string; name: string; side: string; index: number; capacity: number }
 export interface Infra { order?:number; side: string; afterRack: number; placement: string; id: string; moduleId: string; kind: string; name: string }

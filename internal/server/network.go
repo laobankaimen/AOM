@@ -544,3 +544,74 @@ func (a *API) layerMembers(w http.ResponseWriter, r *http.Request) {
 	}
 	reply(w, 200, state)
 }
+
+func (a *API) arrangedTopology(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Revision  int    `json:"revision"`
+		ProjectID string `json:"projectId"`
+		Groups    []struct {
+			NetworkID string            `json:"networkId"`
+			Position  *core.CanvasPoint `json:"position"`
+			Positions []struct {
+				DeviceID string           `json:"deviceId"`
+				Position core.CanvasPoint `json:"position"`
+			} `json:"positions"`
+		} `json:"groups"`
+	}
+	if !decode(w, r, &req) {
+		return
+	}
+	state, err := a.store.Apply(req.Revision, "topology.auto-layout", func(s *core.State) (string, error) {
+		seen := map[string]bool{}
+		count := 0
+		if len(req.Groups) == 0 || len(req.Groups) > 1001 {
+			return "", fmt.Errorf("请选择有效的拓扑范围")
+		}
+		for _, g := range req.Groups {
+			n := s.Network(g.NetworkID)
+			if g.NetworkID != "" && (n == nil || n.ProjectID != req.ProjectID || g.Position == nil || !core.ValidCanvasPoint(*g.Position)) {
+				return "", fmt.Errorf("网络位置无效")
+			}
+			for _, p := range g.Positions {
+				count++
+				if count > 10000 || seen[p.DeviceID] || s.Device(p.DeviceID) == nil || s.DeviceProject(p.DeviceID) != req.ProjectID || !core.ValidCanvasPoint(p.Position) {
+					return "", fmt.Errorf("设备位置无效")
+				}
+				seen[p.DeviceID] = true
+				if n != nil && !core.Contains(n.DeviceIDs, p.DeviceID) {
+					return "", fmt.Errorf("设备不属于当前网络")
+				}
+				if n == nil {
+					for _, network := range s.Networks {
+						if core.Contains(network.DeviceIDs, p.DeviceID) {
+							return "", fmt.Errorf("设备已有网络归属")
+						}
+					}
+				}
+			}
+		}
+		for _, g := range req.Groups {
+			n := s.Network(g.NetworkID)
+			if n != nil {
+				n.Position = g.Position
+				if n.DevicePositions == nil {
+					n.DevicePositions = map[string]core.CanvasPoint{}
+				}
+			}
+			for _, p := range g.Positions {
+				if n != nil {
+					n.DevicePositions[p.DeviceID] = p.Position
+				} else {
+					point := p.Position
+					s.Device(p.DeviceID).TopologyPosition = &point
+				}
+			}
+		}
+		return fmt.Sprintf("自动整理%d台设备的图位置", count), nil
+	})
+	if err != nil {
+		failure(w, err)
+		return
+	}
+	reply(w, 200, state)
+}

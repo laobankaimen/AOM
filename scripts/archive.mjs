@@ -10,7 +10,7 @@ function dosTime(date){return {time:(date.getHours()<<11)|(date.getMinutes()<<5)
 for(const platform of ['linux','windows']){
  const base=`aom-${platform}-amd64`,directory=path.join('release',base);
  const binary=platform==='windows'?'aom.exe':'aom',suffix=platform==='windows'?'cmd':'sh';
- const files=[binary,`start-local.${suffix}`,`start-lan.${suffix}`,'开始使用.txt','SHA256SUMS.txt'];
+ const files=[binary,`start-local.${suffix}`,`start-lan.${suffix}`,'开始使用.txt','SHA256SUMS.txt','licenses/elkjs/LICENSE.md','licenses/elkjs/NOTICE.txt','licenses/elkjs/elk.bundled.js'];
  for(const sub of ['docs','examples'])for(const name of readdirSync(sub).sort())if(statSync(path.join(sub,name)).isFile() && (sub !== 'docs' || name.endsWith('.md')))files.push(`${sub}/${name}`);
  const locals=[],central=[];let offset=0;
  for(const file of files){

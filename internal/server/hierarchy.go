@@ -277,11 +277,14 @@ func (a *API) rackCreate(w http.ResponseWriter, r *http.Request) {
 func (a *API) rackDelete(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Revision int `json:"revision"`
+		core.SpaceDeleteOptions
 	}
 	if !decode(w, r, &req) {
 		return
 	}
-	state, err := a.store.Apply(req.Revision, "rack.delete", func(s *core.State) (string, error) { return core.DeleteRack(s, r.PathValue("id")) })
+	state, err := a.store.Apply(req.Revision, "rack.delete", func(s *core.State) (string, error) {
+		return core.DeleteRackWithContents(s, r.PathValue("id"), req.SpaceDeleteOptions)
+	})
 	if err != nil {
 		failure(w, err)
 		return
@@ -291,11 +294,38 @@ func (a *API) rackDelete(w http.ResponseWriter, r *http.Request) {
 func (a *API) moduleDelete(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Revision int `json:"revision"`
+		core.SpaceDeleteOptions
 	}
 	if !decode(w, r, &req) {
 		return
 	}
-	state, err := a.store.Apply(req.Revision, "module.delete", func(s *core.State) (string, error) { return core.DeleteModule(s, r.PathValue("id")) })
+	state, err := a.store.Apply(req.Revision, "module.delete", func(s *core.State) (string, error) {
+		return core.DeleteModuleWithContents(s, r.PathValue("id"), req.SpaceDeleteOptions)
+	})
+	if err != nil {
+		failure(w, err)
+		return
+	}
+	reply(w, 200, state)
+}
+
+func (a *API) roomEntrance(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Revision int                `json:"revision"`
+		Entrance *core.RoomEntrance `json:"entrance"`
+	}
+	if !decode(w, r, &req) {
+		return
+	}
+	state, err := a.store.Apply(req.Revision, "site.entrance", func(s *core.State) (string, error) {
+		for i := range s.Sites {
+			if s.Sites[i].ID == r.PathValue("id") {
+				s.Sites[i].Entrance = req.Entrance
+				return "设置机房入口：" + s.Sites[i].Name, nil
+			}
+		}
+		return "", fmt.Errorf("机房不存在")
+	})
 	if err != nil {
 		failure(w, err)
 		return

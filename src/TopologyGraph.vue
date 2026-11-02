@@ -5,7 +5,7 @@ import {roleNames,roleColors} from './model';
 import {useNetworkDrag} from './useNetworkDrag';
 import {useTopologyViewport} from './topologyViewport';
 import {compactTopologyLayout} from './topologyLayout';
-import {topologyEdgeGeometry} from './topologyGeometry';
+import {routeConnection} from './topologyRouting';
 import {layersOf} from './networkLayers';
 import {projectTopology,type TopologyNode} from './topologyProjection';
 import {finiteRoomMatrix,transformRoomPointer} from './roomLayout';
@@ -28,7 +28,7 @@ const pendingNode=ref<{id:string;x:number;y:number}|null>(null);
 const pan=ref<{pointer:number;capture:Element;x:number;y:number;left:number;top:number}|null>(null);
 const dragging=ref<Drag|null>(null),layerTarget=ref<{networkId:string;id:string;name:string}|null>(null),dropTarget=ref<{id:string;name:string}|null>(null),copyMembers=ref(false),wire=ref<{source:string;point:CanvasPoint;pointer:number;capture:Element;target:string}|null>(null),pickSource=ref('');
 let suppressClick=false,frame=0,lastClient={x:0,y:0},externalTarget:Element|null=null;
-const networkDrag=useNetworkDrag(svg,canvas,()=>baseGeometry.value.lanes,()=>!props.busy&&!dragging.value&&!wire.value&&!pan.value,(id,position)=>emit('networkPosition',id,position));
+const networkDrag=useNetworkDrag(svg,canvas,()=>baseGeometry.value.lanes,()=>!props.busy&&!dragging.value&&!wire.value&&!pan.value,(id,position)=>emit('networkPosition',id,position),text=>emit('notice',text));
 const geometry=computed(()=>{
  const base=baseGeometry.value;
  const nodes=new Map([...base.nodes].map(([id,p])=>{const d=dragging.value?.node.id===id?dragging.value:pendingNode.value?.id===id?pendingNode.value:null,o=networkDrag.offset(p.groupId),node=projection.value.nodes.find(n=>n.id===id)!;return [id,{...node,x:d?.x??p.x+o.x,y:d?.y??p.y+o.y}]}));
@@ -109,7 +109,11 @@ function clearWire(){const w=wire.value;wire.value=null;if(w?.capture.hasPointer
 const wirePath=computed(()=>{const w=wire.value,n=w&&geometry.value.nodes.get(w.source);return w&&n?`M${n.x+184} ${n.y+38} Q${(n.x+184+w.point.x)/2} ${Math.min(n.y+38,w.point.y)-30} ${w.point.x} ${w.point.y}`:''});
 const dragHint=computed(()=>dragging.value?.moved?(layerTarget.value?`松开移到「${layerTarget.value.name}」 · ${dragging.value.node.deviceIds.length}台`:dropTarget.value?`松开${copyMembers.value?'加入':'移入'}「${dropTarget.value.name}」 · ${dragging.value.node.deviceIds.length}台${copyMembers.value?' · 保留原网络':''}`:inside(lastClient.x,lastClient.y)?'松开保存位置 · Esc取消':'移出画布，松开取消'):wire.value?'拖到另一台设备建立待确认连接 · Esc取消':pickSource.value?'点击目标设备建立连接 · Esc取消':'');
 const active=(l:DeviceLink)=>l.id===props.selectedLink||l.sourceId===props.selectedDevice||l.targetId===props.selectedDevice;
-const edges=computed(()=>projection.value.edges.flatMap((e,index)=>{const a=geometry.value.nodes.get(e.from),b=geometry.value.nodes.get(e.to);return a&&b?[{...e,...topologyEdgeGeometry(a,b,index,76),selected:e.links.some(active),color:e.links.some(active)?'#2563eb':props.networks.find(n=>e.links.some(l=>l.networkIds.includes(n.id)))?.color||'#8095b2'}]:[]}));
+const edges=computed(()=>{
+ const boxes=[...geometry.value.nodes.values()].map(n=>({id:n.id,x:n.x,y:n.y,width:184,height:76}));const labels:{x:number;y:number;width:number;height:number}[]=[];
+ return projection.value.edges.flatMap((e,index)=>{const a=boxes.find(n=>n.id===e.from),b=boxes.find(n=>n.id===e.to);if(!a||!b)return [];const route=routeConnection(a,b,boxes,index,labels);if(route.labelVisible)labels.push({x:route.label.x-44,y:route.label.y-14,width:88,height:28});return [{...e,...route,selected:e.links.some(active),color:e.links.some(active)?'#2563eb':props.networks.find(n=>e.links.some(l=>l.networkIds.includes(n.id)))?.color||'#8095b2'}]});
+});
+
 function edgeName(edge:typeof edges.value[number]){const l=edge.links[0];return edge.links.length===1?`查看链路 ${props.state.devices.find(d=>d.id===l.sourceId)?.name} 到 ${props.state.devices.find(d=>d.id===l.targetId)?.name}`:`查看连接组 ${geometry.value.nodes.get(edge.from)?.name} 到 ${geometry.value.nodes.get(edge.to)?.name} ${edge.links.length}条`}
 function chooseEdge(edge:typeof edges.value[number]){edge.links.length===1?emit('link',edge.links[0].id):emit('linkGroup',edge.links.map(l=>l.id))}
 const short=(v:string,n=21)=>v.length>n?v.slice(0,n-1)+'…':v;
@@ -123,9 +127,9 @@ watch(()=>props.networkId,()=>{expanded.value=new Set();cancel()});watch(()=>pro
  <div v-if="dragging?.moved&&networks.some(n=>n.id!==dragging?.node.networkId)" class="network-drop-strip" aria-label="拖入目标网络"><span>移入网络{{copyMembers?'（保留原网络）':''}}</span><span v-for="n in networks.filter(n=>n.id!==dragging?.node.networkId)" :key="n.id" :data-network-drop="n.id" :data-network-drop-option="n.id">{{n.name}}</span></div>
  <p v-if="dragHint" class="topology-drag-hint" role="status">{{dragHint}}</p>
  <div ref="canvas" :class="['topology-canvas',{'summary-canvas':merge}]" tabindex="0" aria-label="网络拓扑画布，可横向和纵向滚动" @pointerdown="startPan" @pointermove="move($event);networkDrag.move($event)" @pointerup="up($event);networkDrag.up($event)" @pointercancel="cancel();networkDrag.cancel()"><div class="topology-stage">
-  <svg ref="svg" :viewBox="`0 0 ${geometry.width} ${geometry.height}`" :style="fitted.style.value" role="group" aria-label="设备连接与网络分区图">
+  <svg ref="svg" :viewBox="`0 0 ${fitted.viewSize.value.width} ${fitted.viewSize.value.height}`" :style="fitted.style.value" role="group" aria-label="设备连接与网络分区图">
    <defs><pattern id="topology-dots" width="18" height="18" patternUnits="userSpaceOnUse"><circle cx="2" cy="2" r=".8" fill="#d8e3e8"/></pattern></defs>
-   <rect width="100%" height="100%" fill="#f8fbfc"/><rect width="100%" height="100%" fill="url(#topology-dots)"/>
+   <rect width="100%" height="100%" fill="transparent"/>
    <g v-for="lane in geometry.lanes" :key="lane.id" :data-topology-lane="lane.id" :class="{'network-dragging':networkDrag.active.value?.id===lane.id&&networkDrag.dragging.value,'network-drop-target':dropTarget?.id===lane.id}">
     <rect :x="lane.x" :y="lane.y" :width="lane.width" :height="lane.height" rx="12" :fill="lane.color+'07'" :stroke="lane.color+'55'"/>
     <g :class="{'network-drag-handle':!!lane.network}" :data-network-handle="lane.network?.id" :role="lane.network?'button':undefined" :tabindex="lane.network?0:undefined" :aria-label="lane.network?'移动网络分区 '+lane.name:undefined" @pointerdown="networkDrag.down($event,lane.network?.id||'')" @keydown="networkDrag.key($event,lane.network?.id||'')">
@@ -135,7 +139,7 @@ watch(()=>props.networkId,()=>{expanded.value=new Set();cancel()});watch(()=>pro
    <g v-for="edge in edges" :key="edge.id" :opacity="(selectedDevice||selectedLink)&&!edge.selected?0.18:1" @click="chooseEdge(edge)" class="topology-edge">
     <title>{{edge.links.length}} 条连接 · {{edge.links.filter(l=>l.status==='pending').length}} 条待确认 · {{edge.links.filter(l=>l.kind==='physical').length}} 条物理链路</title>
     <path :d="edge.path" fill="none" stroke="transparent" stroke-width="15" pointer-events="stroke"/><path :d="edge.path" fill="none" :stroke="edge.color" :stroke-width="edge.selected?3:1.7" :stroke-dasharray="edge.links.every(l=>l.status==='pending')?'5 5':edge.links.every(l=>l.kind==='logical')?'2 4':undefined"/>
-    <g :transform="`translate(${edge.label.x},${edge.label.y})`" :class="['topology-edge-label',{'compact-label':!showLabels&&edge.links.length===1&&!edge.selected}]" role="button" tabindex="0" :aria-label="edgeName(edge)" :aria-pressed="edge.links.some(l=>l.id===selectedLink)" @keydown.enter.prevent="chooseEdge(edge)" @keydown.space.prevent="chooseEdge(edge)">
+    <g :transform="`translate(${edge.label.x},${edge.label.y})`" :class="['topology-edge-label',{'compact-label':!edge.labelVisible||!showLabels&&!edge.selected}]" role="button" tabindex="0" :aria-label="edgeName(edge)" :aria-pressed="edge.links.some(l=>l.id===selectedLink)" @keydown.enter.prevent="chooseEdge(edge)" @keydown.space.prevent="chooseEdge(edge)">
      <rect x="-44" y="-14" width="88" height="28" rx="6" fill="white" :stroke="edge.color" :stroke-width="edge.selected?2:1"/><text y="4" text-anchor="middle" font-size="10" :fill="edge.color" pointer-events="none">{{edge.links.length>1?edge.links.length+' 条连接':edge.links[0].speedGbps?edge.links[0].speedGbps+' Gbps':edge.links[0].status==='pending'?'待确认关系':edge.links[0].kind==='physical'?'物理连接':'逻辑关系'}}</text>
     </g>
    </g>

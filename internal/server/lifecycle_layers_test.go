@@ -53,3 +53,51 @@ func TestLayerAndDeleteNetworkAPIKeepAssetsAndLinks(t *testing.T) {
 		t.Fatal("deletion removed assets or physical facts")
 	}
 }
+
+func TestRoomEntranceAndAtomicArrangedTopology(t *testing.T) {
+	h, store := testAPI(t)
+	s, _ := store.Snapshot()
+	site := s.Sites[0].ID
+	w := call(h, "PUT", "/api/sites/"+site+"/entrance", fmt.Sprintf(`{"revision":%d,"entrance":{"side":"west","offset":35}}`, s.Revision))
+	if w.Code != 200 {
+		t.Fatal(w.Body.String())
+	}
+	s, _ = store.Snapshot()
+	if s.Sites[0].Entrance == nil || s.Sites[0].Entrance.Offset != 35 {
+		t.Fatal("entrance not saved")
+	}
+	before := core.Clone(s)
+	w = call(h, "PUT", "/api/sites/"+site+"/entrance", fmt.Sprintf(`{"revision":%d,"entrance":{"side":"unknown","offset":101}}`, s.Revision))
+	if w.Code != 400 {
+		t.Fatal("invalid entrance accepted")
+	}
+	s, _ = store.Snapshot()
+	if !reflect.DeepEqual(s, before) {
+		t.Fatal("failed entrance mutated data")
+	}
+	s, e := store.Apply(s.Revision, "fixture", func(v *core.State) (string, error) {
+		v.Devices = append(v.Devices, core.Device{ID: "entry-test-device", Name: "entry-test", AssetTag: "entry-test", ModelID: "model-r722", ModuleID: v.Modules[0].ID, Status: "pending"})
+		return "fixture", nil
+	})
+	if e != nil {
+		t.Fatal(e)
+	}
+	data := fmt.Sprintf(`{"revision":%d,"projectId":%q,"groups":[{"networkId":"","positions":[{"deviceId":"entry-test-device","position":{"x":20,"y":40}}]}]}`, s.Revision, s.Projects[0].ID)
+	audits, _ := store.Audits()
+	w = call(h, "POST", "/api/topology/arrange", data)
+	if w.Code != 200 {
+		t.Fatal(w.Body.String())
+	}
+	next, _ := store.Snapshot()
+	if next.Device("entry-test-device").TopologyPosition.X != 20 {
+		t.Fatal("arrangement not saved")
+	}
+	afterAudits, _ := store.Audits()
+	if !reflect.DeepEqual(audits, afterAudits) {
+		t.Fatal("visual layout generated audit")
+	}
+	w = call(h, "POST", "/api/topology/arrange", data)
+	if w.Code != 409 {
+		t.Fatal("stale arrangement accepted")
+	}
+}

@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"math"
 	"net"
 	"sort"
 	"strings"
@@ -14,10 +15,15 @@ type Project struct {
 	ID   string `json:"id"`
 	Name string `json:"name"`
 }
+type RoomEntrance struct {
+	Side   string  `json:"side"`
+	Offset float64 `json:"offset"`
+}
 type Site struct {
-	ProjectID string `json:"projectId"`
-	ID        string `json:"id"`
-	Name      string `json:"name"`
+	Entrance  *RoomEntrance `json:"entrance,omitempty"`
+	ProjectID string        `json:"projectId"`
+	ID        string        `json:"id"`
+	Name      string        `json:"name"`
 }
 type Module struct {
 	RoomRotation int          `json:"roomRotation,omitempty"`
@@ -192,6 +198,16 @@ func Validate(s *State) error {
 	for _, v := range s.Sites {
 		if !checkID(v.ID) || !textOK(v.Name, 80) || !projects[v.ProjectID] {
 			return fmt.Errorf("机房名称、ID或所属项目无效")
+		}
+		if v.Entrance != nil {
+			switch v.Entrance.Side {
+			case "north", "south", "east", "west":
+			default:
+				return fmt.Errorf("请选择有效入口方向")
+			}
+			if math.IsNaN(v.Entrance.Offset) || math.IsInf(v.Entrance.Offset, 0) || v.Entrance.Offset < 0 || v.Entrance.Offset > 100 {
+				return fmt.Errorf("入口位置须为0–100%%")
+			}
 		}
 		sites[v.ID] = true
 	}
