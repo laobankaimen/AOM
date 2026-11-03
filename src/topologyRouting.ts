@@ -25,10 +25,11 @@ export function routeConnection(a:RouteBox,b:RouteBox,boxes:RouteBox[],index=0,l
  }
  const points=best||[{x:a.x+a.width,y:a.y+a.height/2},{x:b.x,y:b.y+b.height/2}];
  const segments=points.slice(1).map((p,i)=>({a:points[i],b:p,d:Math.abs(p.x-points[i].x)+Math.abs(p.y-points[i].y)})).sort((u,v)=>v.d-u.d);
- let label={x:(points[0].x+points.at(-1)!.x)/2,y:(points[0].y+points.at(-1)!.y)/2},labelVisible=false;
+ const anchor=segments[0];let label={x:(anchor.a.x+anchor.b.x)/2,y:(anchor.a.y+anchor.b.y)/2},labelVisible=false;
  for(const seg of segments){for(const t of [.5,.35,.65]){const candidate={x:seg.a.x+(seg.b.x-seg.a.x)*t,y:seg.a.y+(seg.b.y-seg.a.y)*t};const r={x:candidate.x-labelWidth/2,y:candidate.y-14,width:labelWidth,height:28};if(![...boxes,...labelObstacles,...labels].some(n=>r.x<n.x+n.width+3&&r.x+r.width+3>n.x&&r.y<n.y+n.height+3&&r.y+r.height+3>n.y)){label=candidate;labelVisible=true;break}}if(labelVisible)break}
- // Dense paths can have no segment long enough for a readable badge. Place
- // it above the nodes rather than leaving a clickable badge behind a device.
- if(!labelVisible){for(const y of [Math.max(16,minY-18),maxY-6]){for(let x=Math.max(labelWidth/2+8,minX+labelWidth/2);x<=maxX+labelWidth/2;x+=labelWidth+8){const candidate={x,y},r={x:x-labelWidth/2,y:candidate.y-14,width:labelWidth,height:28};if(![...boxes,...labelObstacles,...labels].some(n=>r.x<n.x+n.width+3&&r.x+r.width+3>n.x&&r.y<n.y+n.height+3&&r.y+r.height+3>n.y)){label=candidate;labelVisible=true;break}}if(labelVisible)break}}
+ // A label always belongs to its own line. If a full badge cannot fit,
+ // retain a compact hit target on a free point of that line instead of moving
+ // an unrelated badge into the margin.
+ if(!labelVisible){let found=false;for(const seg of segments){for(const t of [.5,.25,.75]){const candidate={x:seg.a.x+(seg.b.x-seg.a.x)*t,y:seg.a.y+(seg.b.y-seg.a.y)*t},r={x:candidate.x-6,y:candidate.y-6,width:12,height:12};if(![...boxes,...labelObstacles].some(n=>r.x<n.x+n.width&&r.x+r.width>n.x&&r.y<n.y+n.height&&r.y+r.height>n.y)){label=candidate;found=true;break}}if(found)break}}
  return {path:points.map((p,i)=>`${i?'L':'M'} ${p.x} ${p.y}`).join(' '),points,label,labelVisible,collisions:bestHits};
 }

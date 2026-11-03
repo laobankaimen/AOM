@@ -31,13 +31,18 @@ func TestNetworkDiagramPositionPreservesBusinessDataWithoutAudit(t *testing.T) {
 	if n.Position == nil || n.Position.X != 640.25 || n.Position.Y != 230.75 {
 		t.Fatal("position not saved")
 	}
+	if n.PositionSpace != "parent" {
+		t.Fatal("child coordinates must be parent-local")
+	}
 	position := n.Position
 	n.Position = nil
+	n.PositionSpace = ""
 	s.Revision = original.Revision
 	if !reflect.DeepEqual(s, original) {
 		t.Fatal("diagram move changed business data")
 	}
 	n.Position = position
+	n.PositionSpace = "parent"
 	audits, _ := store.Audits()
 	if !reflect.DeepEqual(beforeAudits, audits) {
 		t.Fatal("diagram move created audit")

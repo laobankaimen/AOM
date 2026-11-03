@@ -1,7 +1,8 @@
+import {roleBase} from './deviceRoles';
 export interface LayoutItem {id:string;role:string;layerId?:string;position?:{x:number;y:number}}
 export interface LayoutGroup {preserveEmpty?:boolean;id:string;items:LayoutItem[];layers?:{id:string;name:string}[];position?:{x:number;y:number}}
 export const topologyLevels=['核心层','汇聚层','接入层','计算 / 存储','其他设备'];
-export function topologyLevel(role:string){return ({core:0,aggregation:1,access:2,management:2,server:3,storage:3,infra:4} as Record<string,number>)[role]??4}
+export function topologyLevel(role:string){return ({core:0,aggregation:1,access:2,management:2,server:3,storage:3,infra:4} as Record<string,number>)[roleBase(role)]??4}
 const valid=(p:LayoutItem['position'])=>!!p&&Number.isFinite(p.x)&&Number.isFinite(p.y)&&p.x>=0&&p.y>=0&&p.x<=10000&&p.y<=10000;
 /** Pack only populated role bands. Saved positions stay local to their network. */
 export function compactTopologyLayout(groups:LayoutGroup[],availableWidth:number,nodeWidth=184,nodeHeight=98,maxColumns=3){
@@ -28,7 +29,7 @@ export function compactTopologyLayout(groups:LayoutGroup[],availableWidth:number
    bands.push({id:layer.id,name:layer.name,y:bandTop-10,top:bandTop-24,height:y-bandTop});
   }
   const width=Math.max(nodeWidth+padding*2,...[...local.values()].map(p=>p.x+nodeWidth+padding*2));
-  const height=Math.max(header+nodeHeight+padding, g.layers?.length?header+y:0,...[...local.values()].map(p=>p.y+header+nodeHeight+padding));
+  const height=!g.items.length?(g.layers?.length?Math.max(130,header+y+padding):130):Math.max(header+nodeHeight+padding, g.layers?.length?header+y:0,...[...local.values()].map(p=>p.y+header+nodeHeight+padding));
   return {id:g.id,x:0,y:0,nodeX:0,nodeY:0,width,height,bands,local};
  });
  let x=20,y=22,rowHeight=0;
@@ -42,4 +43,43 @@ export function compactTopologyLayout(groups:LayoutGroup[],availableWidth:number
  const nodes=new Map<string,{x:number;y:number;groupId:string}>();
  for(const lane of lanes)for(const [id,p] of lane.local)nodes.set(id,{x:lane.nodeX+p.x,y:lane.nodeY+p.y,groupId:lane.id});
  return {lanes,nodes,width:Math.max(280,...lanes.map(l=>l.x+l.width+20)),height:Math.max(180,...lanes.map(l=>l.y+l.height+22))};
+}
+
+export interface NestedLayoutGroup extends LayoutGroup {parentId?:string;positionSpace?:string}
+/** Parent rectangles contain their device bands and all descendants. Child
+ * coordinates are local; legacy absolute child positions stay stored but are
+ * not mistaken for local offsets. */
+export function nestedTopologyLayout(groups:NestedLayoutGroup[],availableWidth:number,nodeWidth=184,nodeHeight=76,maxColumns=6){
+ const padding=20,gap=24,usable=Math.max(320,Number.isFinite(availableWidth)?availableWidth:1000);
+ type FlatLane=ReturnType<typeof compactTopologyLayout>['lanes'][number];
+ type Box=FlatLane&{parentId:string;depth:number;childrenY:number;childCount:number;localX:number;localY:number;ownWidth:number;children:Box[]};
+ const ids=new Set(groups.map(g=>g.id)),parents=new Map(groups.map(g=>[g.id,g.parentId&&ids.has(g.parentId)&&g.parentId!==g.id?g.parentId:''])),built=new Set<string>();
+ function pack(boxes:Box[],width:number,startY:number,local:boolean){
+  let x=local?padding:20,y=startY,row=0;const placed:Box[]=[];
+  for(const box of boxes){
+   if(x>(local?padding:20)&&x+box.width+padding>width){x=local?padding:20;y+=row+gap;row=0}
+   const group=groups.find(g=>g.id===box.id)!,saved=valid(group.position)&&(!local||group.positionSpace==='parent')?group.position:undefined;
+   box.x=saved?Math.max(local?padding:0,saved.x):x;box.y=saved?Math.max(local?startY:0,saved.y):y;
+   let obstacle;while((obstacle=placed.find(b=>box.x<b.x+b.width+gap&&box.x+box.width+gap>b.x&&box.y<b.y+b.height+gap&&box.y+box.height+gap>b.y)))box.y=obstacle.y+obstacle.height+gap;
+   box.localX=box.x;box.localY=box.y;placed.push(box);x+=box.width+gap;row=Math.max(row,box.height);
+  }
+ }
+ function build(group:NestedLayoutGroup,depth:number,ancestry:Set<string>):Box{
+  built.add(group.id);const next=new Set([...ancestry,group.id]),children=groups.filter(g=>parents.get(g.id)===group.id&&!next.has(g.id)).map(g=>build(g,depth+1,next));
+  const own=compactTopologyLayout([{...group,preserveEmpty:true,position:undefined}],Math.max(320,usable-depth*padding*2),nodeWidth,nodeHeight,maxColumns).lanes[0];
+  const ownWidth=Math.max(300,own.width),childrenY=children.length?(group.items.length||own.bands.some(b=>!!b.name)?own.height+28:88):0;
+  pack(children,Math.max(ownWidth,usable-depth*padding*2)-padding,childrenY,true);
+  return {...own,x:0,y:0,nodeX:padding,nodeY:88,parentId:parents.get(group.id)||'',depth,childrenY,childCount:children.length,localX:0,localY:0,ownWidth,children,width:Math.max(ownWidth,...children.map(c=>c.x+c.width+padding)),height:children.length?Math.max(childrenY,...children.map(c=>c.y+c.height+padding)):own.height};
+ }
+ const roots=groups.filter(g=>!parents.get(g.id)).map(g=>build(g,0,new Set()));
+ for(const group of groups)if(!built.has(group.id))roots.push(build(group,0,new Set()));
+ pack(roots,usable,22,false);
+ const lanes:Omit<Box,'children'>[]=[],nodes=new Map<string,{x:number;y:number;groupId:string}>();
+ function place(box:Box,ox:number,oy:number){
+  const {children,...lane}=box;lane.x=ox+box.x;lane.y=oy+box.y;lane.nodeX=lane.x+padding;lane.nodeY=lane.y+88;lane.childrenY=box.childrenY?lane.y+box.childrenY:0;
+  lanes.push(lane);for(const [id,p] of box.local)nodes.set(id,{x:lane.nodeX+p.x,y:lane.nodeY+p.y,groupId:box.id});
+  for(const child of children)place(child,lane.x,lane.y);
+ }
+ for(const box of roots)place(box,0,0);
+ return {lanes,nodes,width:Math.max(320,...roots.map(b=>b.x+b.width+20)),height:Math.max(180,...roots.map(b=>b.y+b.height+22))};
 }

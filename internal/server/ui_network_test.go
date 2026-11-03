@@ -41,6 +41,41 @@ func TestLayerRenameKeepsManualPositions(t *testing.T) {
 	}
 }
 
+func TestLayerVisibilityOnlyUpdatePreservesConfiguration(t *testing.T) {
+	h, store := testAPI(t)
+	s, _ := store.Snapshot()
+	s, err := store.Apply(s.Revision, "fixture", func(s *core.State) (string, error) {
+		s.Devices = append(s.Devices, core.Device{ID: "label-device", Name: "服务器", AssetTag: "LABEL-VISIBILITY", ModelID: "model-r722", ModuleID: s.Modules[0].ID, Status: "pending"})
+		s.Networks = append(s.Networks, core.Network{ID: "label-network", ProjectID: s.Projects[0].ID, Name: "独立显示测试", Purpose: "business", Color: "#497cda", DeviceIDs: []string{"label-device"}, Layers: []core.NetworkLayer{{ID: "app", Name: "业务应用层"}}, DeviceLayers: map[string]string{"label-device": "app"}, DevicePositions: map[string]core.CanvasPoint{"label-device": {X: 250, Y: 125}}})
+		return "fixture", nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	before := core.Clone(s)
+	for _, visible := range []bool{true, false, true} {
+		response := call(h, "PUT", "/api/networks/label-network/layers", fmt.Sprintf(`{"revision":%d,"layersVisible":%t}`, s.Revision, visible))
+		if response.Code != 200 {
+			t.Fatal(response.Body.String())
+		}
+		s, _ = store.Snapshot()
+		expected := *before.Network("label-network")
+		expected.LayersVisible = &visible
+		if !reflect.DeepEqual(*s.Network("label-network"), expected) || !reflect.DeepEqual(s.Devices, before.Devices) {
+			t.Fatal("visibility-only update changed layers, assignments, positions or assets")
+		}
+	}
+	response := call(h, "PUT", "/api/networks/label-network/layers", fmt.Sprintf(`{"revision":%d,"layers":[{"id":"app","name":"改名应用层"}]}`, s.Revision))
+	if response.Code != 200 {
+		t.Fatal(response.Body.String())
+	}
+	s, _ = store.Snapshot()
+	n := s.Network("label-network")
+	if n.LayersVisible == nil || !*n.LayersVisible || n.Layers[0].Name != "改名应用层" || !reflect.DeepEqual(n.DeviceLayers, before.Network("label-network").DeviceLayers) || !reflect.DeepEqual(n.DevicePositions, before.Network("label-network").DevicePositions) {
+		t.Fatal("partial layer configuration erased visibility, assignments or positions")
+	}
+}
+
 func TestMembershipUndoRestoresTagsAndRejectsStaleRevision(t *testing.T) {
 	h, store := testAPI(t)
 	s, _ := store.Snapshot()

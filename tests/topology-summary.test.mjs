@@ -32,3 +32,10 @@ test('same-model servers with different uplinks stay separate; core peers never 
  const links=[{id:'ac',sourceId:'a',targetId:'c',kind:'physical',status:'confirmed'},{id:'bd',sourceId:'b',targetId:'d',kind:'physical',status:'confirmed'}];
  const result=projectTopology(devices,models,[],[],links,true,new Set());assert.equal(result.nodes.length,4);
 });
+
+test('current network owns its multi-network members regardless of initialization order',()=>{
+ const devices=[{id:'a',name:'a',modelId:'m'},{id:'b',name:'b',modelId:'m'}],models=[{id:'m',role:'server',name:'server'}];
+ const child={id:'child',parentId:'parent',deviceIds:['a','b']},parent={id:'parent',deviceIds:['a','b']};
+ const result=projectTopology(devices,models,[child,parent],[child,parent],[],false,new Set(),'parent');
+ assert.equal(result.nodes.length,2);assert.ok(result.nodes.every(n=>n.networkId==='parent'));assert.deepEqual(result.nodes[0].networkIds,['child','parent']);
+});

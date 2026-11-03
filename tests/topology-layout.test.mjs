@@ -1,5 +1,6 @@
 import {readFileSync} from 'node:fs';import test from 'node:test';import assert from 'node:assert/strict';import ts from 'typescript';
-const js=ts.transpileModule(readFileSync(new URL('../src/topologyLayout.ts',import.meta.url),'utf8'),{compilerOptions:{module:ts.ModuleKind.ES2022,target:ts.ScriptTarget.ES2022}}).outputText;
+import {build} from 'esbuild';
+const compiled=await build({entryPoints:['src/topologyLayout.ts'],bundle:true,write:false,format:'esm',platform:'node'});const js=compiled.outputFiles[0].text;
 const {compactTopologyLayout:layout}=await import('data:text/javascript;base64,'+Buffer.from(js).toString('base64'));
 const items=(count,prefix='s',role='server')=>Array.from({length:count},(_,i)=>({id:prefix+i,role}));
 function noOverlap(result,w=184,h=98){const nodes=[...result.nodes.values()];for(let i=0;i<nodes.length;i++)for(let j=i+1;j<nodes.length;j++){const a=nodes[i],b=nodes[j];assert.ok(a.x+w<=b.x||b.x+w<=a.x||a.y+h<=b.y||b.y+h<=a.y,`overlap ${i},${j}`)}}
@@ -40,4 +41,8 @@ test('custom layers have ordered drop areas, including empty layers, and overrid
 test('saved device coordinates cannot lift a lower-layer device into a higher layer',()=>{
  const r=layout([{id:'n',layers:[{id:'core',name:'核心'},{id:'compute',name:'计算'}],items:[{id:'core',role:'core',layerId:'core',position:{x:0,y:0}},{id:'server',role:'server',layerId:'compute',position:{x:240,y:0}}]}],900);
  const lane=r.lanes[0],band=lane.bands.find(b=>b.id==='compute');assert.ok(r.nodes.get('server').y>=lane.nodeY+band.top+24);assert.ok(r.nodes.get('server').y>r.nodes.get('core').y);noOverlap(r);
+});
+
+test('a real empty network keeps a compact actionable lane without a device-sized blank area',()=>{
+ const r=layout([{id:'empty',preserveEmpty:true,items:[]}],1200,184,76);assert.equal(r.lanes.length,1);assert.equal(r.lanes[0].height,130);assert.equal(r.lanes[0].bands.length,0);assert.equal(r.nodes.size,0);
 });

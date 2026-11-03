@@ -18,7 +18,7 @@ test('详情关闭可恢复，网络整组拖动在两种视图中保存且不�
  await page.getByRole('button',{name:'取消拓扑选择',exact:true}).click();await page.getByRole('button',{name:'收起拓扑详情',exact:true}).click();
  for(const mode of ['detail','auto']){
   await page.getByRole('combobox',{name:'拓扑展示方式',exact:true}).selectOption(mode);
-  const handle=page.getByRole('button',{name:'移动网络分区 网络A',exact:true}),lane=page.locator(`[data-topology-lane="${a.id}"]`),svg=page.locator(mode==='detail'?'.topology-canvas svg':'.summary-canvas svg');
+  const handle=page.getByRole('button',{name:'选择网络 网络A',exact:true}),lane=page.locator(`[data-topology-lane="${a.id}"]`),svg=page.locator(mode==='detail'?'.topology-canvas svg':'.summary-canvas svg');
   await handle.scrollIntoViewIfNeeded();const rect=(await handle.boundingBox())!,x=rect.x+rect.width*.35,y=rect.y+rect.height*.45;
   const revision=(await snapshot()).revision,viewBox=await svg.getAttribute('viewBox'),initialX=Number(await lane.locator(':scope>rect').first().getAttribute('x'));
   const paths=await svg.locator('path[d]').evaluateAll(nodes=>nodes.map(n=>n.getAttribute('d')));
@@ -31,7 +31,7 @@ test('详情关闭可恢复，网络整组拖动在两种视图中保存且不�
   await handle.scrollIntoViewIfNeeded();const b=(await handle.boundingBox())!;await page.mouse.move(b.x+40,b.y+20);await page.mouse.down();await page.mouse.move(b.x+58,b.y+32,{steps:8});await expect(lane).toHaveClass(/network-dragging/);await page.keyboard.press('Escape');await page.mouse.up();expect((await snapshot()).revision).toBe(revision+1);expect((await snapshot()).networks.find(n=>n.id===a.id)?.position).toEqual(target);
  }
  s=await snapshot();expect(s.devices).toEqual(original.devices);expect(s.links).toEqual(original.links);expect(s.networks.find(n=>n.id===a.id)?.deviceIds).toEqual(a.deviceIds);expect(s.networks.find(n=>n.id===a.id)?.parentId).toBe(a.parentId);expect(await(await request.get('/api/audits')).json()).toEqual(audits);
- const saved=s.networks.find(n=>n.id===a.id)!.position!;await page.reload();const handle=page.getByRole('button',{name:'移动网络分区 网络A',exact:true});await expect(handle).toBeVisible();await handle.focus();await handle.press('Alt+ArrowDown');await expect.poll(async()=>(await snapshot()).networks.find(n=>n.id===a.id)?.position?.y).toBe(saved.y+12);
+ const saved=s.networks.find(n=>n.id===a.id)!.position!;await page.reload();const handle=page.getByRole('button',{name:'选择网络 网络A',exact:true});await expect(handle).toBeVisible();await handle.focus();await handle.press('Alt+ArrowDown');await expect.poll(async()=>(await snapshot()).networks.find(n=>n.id===a.id)?.position?.y).toBe(saved.y+12);
  await openCanvasMenu(page);await page.getByRole('button',{name:'自动排列',exact:true}).click();await expect.poll(async()=>(await snapshot()).networks.find(n=>n.id===a.id)?.position?.x).toBe(20);expect(await(await request.get('/api/audits')).json()).toEqual(audits);expect(errors).toEqual([]);
 });
 

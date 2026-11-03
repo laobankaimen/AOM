@@ -9,9 +9,10 @@ import (
 
 func (a *API) network(w http.ResponseWriter, r *http.Request) {
 	var req struct {
-		Revision int          `json:"revision"`
-		Network  core.Network `json:"network"`
-		Detach   bool         `json:"detach"`
+		Revision     int          `json:"revision"`
+		Network      core.Network `json:"network"`
+		Detach       bool         `json:"detach"`
+		LiftChildren bool         `json:"liftChildren"`
 	}
 	if !decode(w, r, &req) {
 		return
@@ -35,7 +36,7 @@ func (a *API) network(w http.ResponseWriter, r *http.Request) {
 			}
 			if r.Method == "DELETE" {
 				for _, child := range s.Networks {
-					if child.ParentID == old.ID {
+					if child.ParentID == old.ID && !req.LiftChildren {
 						return "", fmt.Errorf("网络仍包含子网络，请先移动子网络")
 					}
 				}
@@ -50,11 +51,21 @@ func (a *API) network(w http.ResponseWriter, r *http.Request) {
 				for j := range s.Links {
 					s.Links[j].NetworkIDs = core.RemoveID(s.Links[j].NetworkIDs, old.ID)
 				}
+				if req.LiftChildren {
+					for j := range s.Networks {
+						if s.Networks[j].ParentID == old.ID {
+							s.Networks[j].ParentID = old.ParentID
+							s.Networks[j].Position = nil
+							s.Networks[j].PositionSpace = ""
+						}
+					}
+				}
 				s.Networks = append(s.Networks[:i], s.Networks[i+1:]...)
 				return "删除网络分区：" + old.Name, nil
 			}
 			n.ID = old.ID
 			n.ProjectID = old.ProjectID
+			n.LayersVisible = old.LayersVisible
 			n.Layers = old.Layers
 			n.DeviceLayers = old.DeviceLayers
 			for id := range n.DeviceLayers {
@@ -63,6 +74,11 @@ func (a *API) network(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 			n.Position = old.Position
+			n.PositionSpace = old.PositionSpace
+			if n.ParentID != old.ParentID {
+				n.Position = nil
+				n.PositionSpace = ""
+			}
 			n.DevicePositions = old.DevicePositions
 			for id := range n.DevicePositions {
 				if !core.Contains(n.DeviceIDs, id) {
@@ -183,6 +199,7 @@ func (a *API) networkMove(w http.ResponseWriter, r *http.Request) {
 			return "", fmt.Errorf("网络不存在")
 		}
 		n.ParentID = req.ParentID
+		n.PositionSpace = ""
 		n.Position = req.Position
 		return "移动子网络：" + n.Name, nil
 	})
@@ -413,6 +430,10 @@ func (a *API) networkLayoutPosition(w http.ResponseWriter, r *http.Request) {
 			return "", fmt.Errorf("网络图位置须在0–10000范围内")
 		}
 		network.Position = req.Position
+		network.PositionSpace = ""
+		if network.ParentID != "" {
+			network.PositionSpace = "parent"
+		}
 		return "调整网络图位置：" + network.Name, nil
 	})
 	if err != nil {
@@ -482,9 +503,10 @@ func (a *API) devicePositions(w http.ResponseWriter, r *http.Request) {
 
 func (a *API) networkLayers(w http.ResponseWriter, r *http.Request) {
 	var req struct {
-		Revision     int                 `json:"revision"`
-		Layers       []core.NetworkLayer `json:"layers"`
-		DeviceLayers map[string]string   `json:"deviceLayers"`
+		Revision      int                 `json:"revision"`
+		Layers        []core.NetworkLayer `json:"layers"`
+		DeviceLayers  map[string]string   `json:"deviceLayers"`
+		LayersVisible *bool               `json:"layersVisible"`
 	}
 	if !decode(w, r, &req) {
 		return
@@ -502,7 +524,7 @@ func (a *API) networkLayers(w http.ResponseWriter, r *http.Request) {
 				role := ""
 				if d := s.Device(deviceID); d != nil {
 					if m := s.Model(d.ModelID); m != nil {
-						role = m.Role
+						role = s.RoleBase(m.Role)
 					}
 				}
 				id = map[string]string{"core": "core", "aggregation": "aggregation", "access": "access", "management": "access", "server": "compute", "storage": "compute"}[role]
@@ -517,8 +539,15 @@ func (a *API) networkLayers(w http.ResponseWriter, r *http.Request) {
 			}
 			return layers[len(layers)-1].ID, len(layers) - 1
 		}
-		n.Layers = req.Layers
-		n.DeviceLayers = req.DeviceLayers
+		if req.LayersVisible != nil {
+			n.LayersVisible = req.LayersVisible
+		}
+		if req.Layers != nil {
+			n.Layers = req.Layers
+		}
+		if req.DeviceLayers != nil {
+			n.DeviceLayers = req.DeviceLayers
+		}
 		for _, deviceID := range n.DeviceIDs {
 			beforeID, beforeIndex := effective(oldLayers, oldAssignments, deviceID)
 			afterID, afterIndex := effective(core.NetworkLayers(n), n.DeviceLayers, deviceID)
@@ -623,6 +652,10 @@ func (a *API) arrangedTopology(w http.ResponseWriter, r *http.Request) {
 			n := s.Network(g.NetworkID)
 			if n != nil {
 				n.Position = g.Position
+				n.PositionSpace = ""
+				if n.ParentID != "" {
+					n.PositionSpace = "parent"
+				}
 				if n.DevicePositions == nil {
 					n.DevicePositions = map[string]core.CanvasPoint{}
 				}

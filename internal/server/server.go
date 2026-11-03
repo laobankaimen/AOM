@@ -65,6 +65,10 @@ func newApplication(store *core.Store, web fs.FS) http.Handler {
 	mux.HandleFunc("POST /api/infrastructure", a.infrastructure)
 	mux.HandleFunc("PUT /api/infrastructure/{id}", a.infrastructure)
 	mux.HandleFunc("DELETE /api/infrastructure/{id}", a.infrastructure)
+	mux.HandleFunc("PUT /api/device-roles", a.deviceRoles)
+	mux.HandleFunc("POST /api/models/import/preview", a.importModels)
+	mux.HandleFunc("POST /api/models/import/commit", a.importModels)
+	mux.HandleFunc("GET /api/export/models.csv", a.exportModels)
 	mux.HandleFunc("POST /api/models", a.model)
 	mux.HandleFunc("PUT /api/models/{id}", a.model)
 	mux.HandleFunc("DELETE /api/models/{id}", a.model)
@@ -194,8 +198,9 @@ func (a *API) plan(w http.ResponseWriter, r *http.Request) {
 }
 func (a *API) model(w http.ResponseWriter, r *http.Request) {
 	var req struct {
-		Revision int        `json:"revision"`
-		Model    core.Model `json:"model"`
+		Revision       int              `json:"revision"`
+		Model          core.Model       `json:"model"`
+		RoleDefinition *core.DeviceRole `json:"roleDefinition,omitempty"`
 	}
 	if !decode(w, r, &req) {
 		return
@@ -203,6 +208,13 @@ func (a *API) model(w http.ResponseWriter, r *http.Request) {
 	s, e := a.store.Apply(req.Revision, "model."+strings.ToLower(r.Method), func(s *core.State) (string, error) {
 		m := req.Model
 		m.Name = strings.TrimSpace(m.Name)
+		if r.Method != "DELETE" && req.RoleDefinition != nil {
+			role := *req.RoleDefinition
+			role.ID = core.ID("role")
+			role.Name = strings.TrimSpace(role.Name)
+			s.DeviceRoles = append(s.DeviceRoles, role)
+			m.Role = role.ID
+		}
 		if r.Method == "POST" {
 			m.ID = core.ID("model")
 			s.Models = append(s.Models, m)

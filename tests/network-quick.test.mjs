@@ -8,7 +8,7 @@ const network={id:'n',projectId:'p',name:'数据网络',purpose:'business',color
 const state={racks:[],projects:[{id:'p',name:'项目'}],sites:[{id:'r',projectId:'p'}],modules:[{id:'m',siteId:'r',name:'模块'}],devices:[{id:'a',name:'交换机A',modelId:'switch',moduleId:'m',assetTag:'a'},{id:'b',name:'服务器B',modelId:'server',moduleId:'m',assetTag:'b'}],models:[{id:'switch',name:'接入交换机',role:'access'},{id:'server',name:'计算型号',role:'server'}],networks:[network],links:[],revision:1};
 test('quick forms render Vue reactive edit data and actionable duplicate feedback without opening an editor',async()=>{
  const html=await renderToString(createSSRApp({render:()=>h(Quick,{mode:'network',state,projectId:'p',initial:reactive({...network,id:''})})}));
- assert.match(html,/项目中已有/);assert.match(html,/打开已有网络/);assert.match(html,/aria-invalid="true"/);assert.ok(!html.includes('editor-page'));
+ assert.match(html,/项目中已有/);assert.match(html,/定位已有网络/);assert.match(html,/aria-invalid="true"/);assert.ok(!html.includes('editor-page'));
  const edit=await renderToString(createSSRApp({render:()=>h(Quick,{mode:'network',state,projectId:'p',initial:reactive(network)})}));assert.ok(!edit.includes('项目中已有'));assert.match(edit,/保存网络/);
  const batch=await renderToString(createSSRApp({render:()=>h(Quick,{mode:'links',state,projectId:'p',network})}));assert.match(batch,/选择上联 交换机A/);assert.match(batch,/确认建立连接/);
 });
@@ -18,10 +18,16 @@ test('merged graph renders counts, selectable cards and finite geometry',async()
  assert.match(html,/设备连接与网络分区图/);assert.match(html,/查看拓扑设备 服务器B/);assert.match(html,/查看拓扑设备 服务器C/);assert.ok(!html.includes('展开 计算型号 2台'));assert.ok(!html.includes('NaN'));assert.ok(!html.includes('undefined'));assert.match(html,/stroke-dasharray="5 5"/);
 });
 
-test('device graph renders only populated networks and a full-size finite viewport',async()=>{
+test('device graph keeps empty networks actionable and renders a finite viewport',async()=>{
  const servers=Array.from({length:3},(_,i)=>({...state.devices[1],id:'srv'+i,name:'服务器'+i}));
  const net={...network,deviceIds:servers.map(d=>d.id)};
  const html=await renderToString(createSSRApp({render:()=>h(Graph,{state:{...state,devices:servers},devices:servers,networks:[{...network,id:'empty',name:'空网络',deviceIds:[]},net],links:[],networkId:'',selectedDevice:'',selectedLink:'',zoom:85})}));
- assert.ok(!html.includes('data-topology-lane="empty"'));assert.match(html,/data-topology-lane="n"/);
+ assert.match(html,/data-topology-lane="empty"/);assert.match(html,/data-topology-lane="n"/);
  const bounds=html.match(/viewBox="0 0 ([\d.]+) ([\d.]+)"/);assert.ok(bounds);assert.ok(Number(bounds[2])>=300);assert.ok(!html.includes('NaN'));
+});
+
+test('empty parent and child rectangles both remain visible and actionable',async()=>{
+ const parent={...network,id:'parent',name:'父容器',deviceIds:[]},child={...network,id:'child',parentId:'parent',name:'空子网',deviceIds:[]};
+ const html=await renderToString(createSSRApp({render:()=>h(Graph,{state:{...state,networks:[parent,child]},devices:[],networks:[parent,child],links:[],networkId:'parent',selectedDevice:'',selectedLink:'',zoom:100})}));
+ assert.match(html,/data-topology-lane="parent"/);assert.match(html,/data-topology-lane="child"/);assert.match(html,/为当前网络添加设备/);
 });

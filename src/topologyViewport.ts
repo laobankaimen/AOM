@@ -11,8 +11,9 @@ export function useTopologyViewport(canvas:Ref<HTMLElement|undefined>,bounds:()=
  async function fit(){if(locked())return;const el=canvas.value;if(!el||!el.clientWidth||!el.clientHeight)return;fitting.value=true;update(topologyFitZoom(bounds().width,bounds().height,el.clientWidth,el.clientHeight));await nextTick();el.scrollLeft=0;el.scrollTop=0}
  async function actual(){if(locked())return;fitting.value=false;update(100);await nextTick();if(canvas.value){canvas.value.scrollLeft=0;canvas.value.scrollTop=0}}
  function wheel(e:WheelEvent){if(locked())return;e.preventDefault();const el=canvas.value;if(!el)return;if(e.ctrlKey||e.metaKey){const box=el.getBoundingClientRect();void change(Math.round(zoom()*Math.exp(-e.deltaY*.002)),e.clientX-box.left,e.clientY-box.top)}else{el.scrollLeft+=e.shiftKey?e.deltaY:e.deltaX;el.scrollTop+=e.shiftKey?0:e.deltaY}}
- onMounted(()=>{if(canvas.value){canvas.value.addEventListener('wheel',wheel,{passive:false});viewport.value={width:canvas.value.clientWidth,height:canvas.value.clientHeight};observer=new ResizeObserver(()=>{if(canvas.value&&!locked())viewport.value={width:canvas.value.clientWidth,height:canvas.value.clientHeight};if(fitting.value&&!locked())void fit()});observer.observe(canvas.value)}});
- onBeforeUnmount(()=>{observer?.disconnect();canvas.value?.removeEventListener('wheel',wheel)});
+ onMounted(()=>{if(canvas.value){canvas.value.addEventListener('wheel',wheel,{passive:false});viewport.value={width:canvas.value.clientWidth,height:canvas.value.clientHeight};observer=new ResizeObserver(()=>{if(canvas.value&&!locked())viewport.value={width:canvas.value.clientWidth,height:canvas.value.clientHeight};});observer.observe(canvas.value)}});
+ const resize=()=>{if(fitting.value&&!locked())void fit()};onMounted(()=>window.addEventListener('resize',resize));
+ onBeforeUnmount(()=>{window.removeEventListener('resize',resize);observer?.disconnect();canvas.value?.removeEventListener('wheel',wheel)});
  watch(()=>[bounds().width,bounds().height],()=>{if(fitting.value&&!locked())void fit()});
  return {style,viewSize,fit,actual,change,fitting};
 }

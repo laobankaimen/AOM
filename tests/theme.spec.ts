@@ -25,5 +25,5 @@ test('搜索框鼠标和键盘聚焦仅显示外框，核心文字与主操作�
 test('拓扑搜索框焦点与普通表单键盘焦点均保留',async({page,request})=>{
  let s=await(await request.get('/api/state')).json();const result=await request.post('/api/devices',{data:{revision:s.revision,autoPlace:true,device:{assetTag:'THEME-FOCUS-DEVICE',name:'配色验收设备',modelId:'model-r722',moduleId:s.modules[0].id,status:'pending'}}});expect(result.ok()).toBeTruthy();
  await page.goto('/');await page.getByRole('link',{name:'网络拓扑',exact:true}).click();await checkSearch(page,'搜索拓扑设备');await page.screenshot({path:'.cache/theme-topology-focus.png',fullPage:true});
- await openNetworkPanel(page);await page.locator('.action-menu summary').filter({hasText:'拓扑更多操作'}).click();await page.getByRole('button',{name:'新建设备',exact:true}).click();const field=page.getByRole('textbox',{name:'资产编号',exact:true});await field.focus();await field.press('Tab');await page.keyboard.press('Shift+Tab');await expect(field).toBeFocused();expect(await field.evaluate(el=>getComputedStyle(el).outlineStyle)).toBe('solid');
+ await openNetworkPanel(page);await page.getByRole('button',{name:'新建设备',exact:true}).click();const field=page.getByRole('textbox',{name:'资产编号',exact:true});await field.focus();await field.press('Tab');await page.keyboard.press('Shift+Tab');await expect(field).toBeFocused();expect(await field.evaluate(el=>getComputedStyle(el).outlineStyle)).toBe('solid');
 });

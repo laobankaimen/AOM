@@ -10,8 +10,8 @@ import (
 
 const auditDeltaFormat = "changed-records-v1"
 
-var auditCollections = []string{"projects", "sites", "modules", "racks", "infra", "models", "devices", "networks", "links", "templates"}
-var visualFields = map[string][]string{"modules": {"roomPosition", "roomRotation"}, "devices": {"topologyPosition"}, "networks": {"position", "devicePositions", "color"}, "templates": {"updatedAt"}}
+var auditCollections = []string{"projects", "sites", "modules", "racks", "infra", "models", "devices", "networks", "links", "templates", "deviceRoles"}
+var visualFields = map[string][]string{"modules": {"roomPosition", "roomRotation"}, "devices": {"topologyPosition"}, "networks": {"position", "positionSpace", "devicePositions", "color", "layersVisible"}, "templates": {"updatedAt"}}
 
 func auditObjects(raw json.RawMessage, collection string) (map[string]json.RawMessage, error) {
 	var records []map[string]json.RawMessage

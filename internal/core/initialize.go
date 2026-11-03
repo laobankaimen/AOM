@@ -58,7 +58,7 @@ func csvRecords(content string) (map[string]int, [][]string, []int, error) {
 		return nil, nil, nil, fmt.Errorf("CSV表头无效")
 	}
 	aliases := map[string]string{
-		"型号": "model", "设备型号": "model", "数量": "quantity", "台数": "quantity", "名称": "name", "设备名称": "name", "资产前缀": "asset_prefix", "资产编号": "asset_tag", "asset": "asset_tag", "序列号": "sn", "备注": "note", "机柜": "rack", "机柜名称": "rack", "起始u": "start_u", "起始u位": "start_u", "u位": "start_u", "模块": "module", "微模块": "module", "微模块名称": "module", "布局模板": "template", "模板": "template", "设备角色": "role", "角色": "role", "u高": "u_height", "高度u": "u_height", "厂商": "vendor",
+		"型号": "model", "设备型号": "model", "数量": "quantity", "台数": "quantity", "名称": "name", "设备名称": "name", "资产前缀": "asset_prefix", "资产编号": "asset_tag", "asset": "asset_tag", "序列号": "sn", "备注": "note", "机柜": "rack", "机柜名称": "rack", "起始u": "start_u", "起始u位": "start_u", "u位": "start_u", "模块": "module", "微模块": "module", "微模块名称": "module", "布局模板": "template", "模板": "template", "设备角色": "role", "角色": "role", "u高": "u_height", "高度u": "u_height", "厂商": "vendor", "端口说明": "ports", "端口": "ports",
 		"网络": "networks", "所属网络": "networks", "网络分区": "networks", "源资产编号": "source", "目标资产编号": "target", "源端口": "source_port", "目标端口": "target_port", "类型": "kind", "速率": "speed", "介质": "medium", "确认状态": "status", "网络名称": "network_name", "上级网络": "parent", "用途": "purpose", "vlan id": "vlan", "网段": "cidr", "网关": "gateway", "颜色": "color",
 	}
 	cols := map[string]int{}

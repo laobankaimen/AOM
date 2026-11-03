@@ -12,3 +12,8 @@ test('overlapping historical network and device coordinates are separated on dis
 test('room camera fills wide and tall viewports without distorting units',()=>{
  for(const [w,h]of [[1800,600],[390,700],[900,900]]){const box={x:-400,y:30,width:600,height:500},camera=fillCamera(box,w,h,100);assert.ok(Math.abs(camera.width/camera.height-w/h)<1e-8);assert.ok(camera.x<=box.x&&camera.y<=box.y);assert.ok(camera.x+camera.width>=box.x+box.width-1e-8);const zoom=fillCamera(box,w,h,200);assert.equal(zoom.width,camera.width/2)}
 });
+
+test('even collision-constrained badges remain exactly on a segment of their own route',()=>{
+ const boxes=[{id:'a',x:20,y:200,width:184,height:76},{id:'b',x:900,y:420,width:184,height:76},{id:'c',x:400,y:200,width:184,height:76}];
+ for(const obstacles of [[],[{id:'all-label-space',x:-100,y:-100,width:2000,height:2000}]]){const r=routeConnection(boxes[0],boxes[1],boxes,3,[],128,obstacles);assert.ok(r.points.slice(1).some((b,i)=>{const a=r.points[i];return a.x===b.x?Math.abs(r.label.x-a.x)<.001&&r.label.y>=Math.min(a.y,b.y)&&r.label.y<=Math.max(a.y,b.y):Math.abs(r.label.y-a.y)<.001&&r.label.x>=Math.min(a.x,b.x)&&r.label.x<=Math.max(a.x,b.x)}))}
+});

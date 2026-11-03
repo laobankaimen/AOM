@@ -316,7 +316,7 @@ body:has(.app-shell.hide-sidebar) .editor-page { left:0; }
 .hide-stats .network-summary,.hide-stats .home-metrics,.hide-stats .room-stats-strip { display:none; }
 .hide-networks .network-partitions>.network-chips,.hide-networks .network-partitions>.panel-note { display:none; }
 .hide-networks .network-partitions { margin-bottom:12px; }
-.hide-labels .role-legend,.hide-labels .graph-display-options,.hide-labels .summary-caption,.hide-labels .topology-role-label,.hide-labels .room-drag-hint,.hide-labels .page-footer,.hide-labels .canvas-footer>span:first-child,.hide-labels .home-room-panel>.panel-heading>.muted { display:none; }
+.hide-labels .role-legend,.hide-labels .graph-display-options,.hide-labels .summary-caption,.hide-labels .room-drag-hint,.hide-labels .page-footer,.hide-labels .canvas-footer>span:first-child,.hide-labels .home-room-panel>.panel-heading>.muted { display:none; }
 .hide-tools .graph-toolbar,.hide-tools .rack-workbench-toolbar,.hide-tools .rack-navigator,.hide-tools .topology-actions>.search-box,.hide-tools .topology-actions>select { display:none; }
 .hide-details .topology-main,.hide-details .spatial-layout,.hide-details .elevation-layout { grid-template-columns:minmax(0,1fr); }
 .hide-details .topology-inspector,.hide-details .detail-panel,.hide-details .placement-panel { display:none; }
@@ -583,12 +583,7 @@ a[aria-disabled=true] { cursor:not-allowed; opacity:.5; }
 .home-room-card { display:flex; flex-direction:column; }
 .home-room-card .home-room-visual,.home-room-card .home-room-name,.home-room-card .home-room-footer { width:100%; }
 .home-room-card .home-room-name { text-align:left; }
-.home-room-grid.few-rooms { grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); }
-.few-rooms .home-room-card { display:grid; grid-template-columns:140px minmax(0,1fr); grid-template-rows:auto auto auto; align-items:center; column-gap:16px; }
-.few-rooms .home-room-visual { grid-row:1 / 4; height:100%; min-height:150px; }
-.few-rooms .home-room-name { padding:16px 16px 0 0; }
-.few-rooms .home-room-card>p { margin:0; padding:8px 16px 8px 0; }
-.few-rooms .home-room-footer { padding:10px 16px 14px 0; background:transparent; border:0; }
+
 .site-link { display:flex; }
 .auth-card>.editor-fieldset { padding:0; display:flex; flex-direction:column; gap:16px; }
 .network-drop-invalid>rect { fill:#fef2f2!important; stroke:#b91c1c!important; stroke-width:3; }
@@ -596,9 +591,9 @@ a[aria-disabled=true] { cursor:not-allowed; opacity:.5; }
 .template-actual-preview { position:relative; padding:12px; }
 .template-actual-preview svg { width:100%; height:115px; }
 .template-actual-preview>span { font-size:11px; color:var(--text-secondary); }
-@media(min-width:1100px) {
- .canvas-first .topology-main.inspector-visible { padding-right:334px; }
- .canvas-first .topology-main.navigation-visible { padding-left:366px; }
+@media(min-width:1000px) {
+ .canvas-first .topology-workbench.inspector-visible { display:grid; grid-template-columns:minmax(0,1fr) 344px; gap:12px; align-items:start; }
+ .canvas-first .topology-main.navigation-visible { padding-left:410px; }
  .canvas-first .topology-main.inspector-visible.navigation-visible { padding-left:0; }
 }
 .floor-scroll { cursor:grab; }
@@ -610,3 +605,124 @@ a[aria-disabled=true] { cursor:not-allowed; opacity:.5; }
 .auth-card>.editor-fieldset>.primary { margin-top:13px; min-height:43px; }
 .auth-card>.editor-fieldset>.secondary { margin-top:10px; }
 .unassigned-toggle[aria-pressed=true] { color:var(--accent); border-color:var(--accent-border); background:var(--accent-soft); }
+
+/* Operations workbench: bounded room cards and visible, reversible device actions. */
+.home-room-grid { grid-template-columns:repeat(auto-fill,minmax(min(100%,300px),440px)); gap:18px; justify-content:start; }
+.home-room-card { display:grid; grid-template-columns:92px minmax(0,1fr); grid-template-rows:auto auto auto; column-gap:16px; align-items:center; min-height:156px; }
+.home-room-card .home-room-visual { grid-row:1 / 4; height:100%; min-height:156px; width:92px; gap:0; overflow:hidden; }
+.home-room-visual>svg { display:none; }
+.home-room-visual .room-silhouettes { gap:4px; }
+.home-room-visual .room-silhouettes i { width:23px; height:65px; padding:8px 4px; }
+.home-room-visual .room-silhouettes i:nth-child(n+4) { display:none; }
+.home-room-card .home-room-name { padding:16px 16px 0 0; min-width:0; }
+.home-room-card .home-room-name h3 { overflow-wrap:anywhere; }
+.home-room-card>p { padding:6px 16px 6px 0; margin:0; line-height:1.6; }
+.home-room-card .home-room-footer { padding:8px 16px 16px 0; background:transparent; border:0; justify-content:flex-start; flex-wrap:wrap; gap:6px 18px; }
+.device-quick-actions { margin:12px 0; min-width:0; }
+.device-placement-buttons { display:flex; flex-wrap:wrap; gap:8px; }
+.device-placement-buttons>.quick-placement-unrack { flex:1; justify-content:space-between; color:var(--accent); border-color:var(--accent-border); }
+kbd { font:11px ui-monospace,monospace; display:inline-flex; align-items:center; white-space:nowrap; padding:2px 5px; border:1px solid currentColor; border-radius:4px; opacity:.78; }
+.selected-device>.primary { gap:8px; }
+.selected-device>.primary kbd { margin-left:auto; }
+.quick-placement-form { display:grid; gap:10px; margin-top:12px; padding:12px; background:var(--surface-soft); border:1px solid var(--border); border-radius:6px; }
+.quick-placement-form label { display:flex; flex-direction:column; gap:6px; font-size:12px; color:var(--text-secondary); }
+.quick-placement-form select { width:100%; min-width:0; }
+.quick-placement-submit { display:flex; gap:8px; }
+.placement-undo { display:flex; flex-wrap:wrap; align-items:center; gap:6px; font-size:12px; color:var(--text-secondary); }
+.device-quick-actions.is-compact { margin:0 0 6px; }
+.is-compact .device-placement-buttons { gap:6px; }
+.is-compact .device-placement-buttons>button { min-height:32px; padding:5px 8px; font-size:12px; flex:initial; }
+.is-compact .quick-placement-form { min-width:220px; }
+.shortcut-help dl { display:grid; grid-template-columns:120px minmax(0,1fr); gap:16px; margin-top:20px; }
+.shortcut-help dd { margin:0; color:var(--text-secondary); }
+.import-file-actions { display:flex; flex-wrap:wrap; align-items:center; gap:16px; margin:20px 0; }
+.model-preview { max-height:360px; overflow:auto; margin-top:16px; }
+.role-manager input:not([type=color]),.role-manager select { width:100%; min-width:120px; }
+.role-manager input[type=color] { min-width:50px; width:50px; min-height:36px; padding:3px; }
+.topology-primary-toolbar { flex-wrap:wrap; }
+
+.inline-role-fields {display:grid;grid-template-columns:2fr 1fr 70px;gap:12px;padding:14px;background:var(--surface-soft);border:1px solid var(--border);border-radius:6px}.inline-role-fields label{min-width:0}.inline-role-fields .field-note{grid-column:1/-1}.inline-role-fields input[type=color]{width:100%;height:40px;padding:3px}
+
+.room-entry-control{display:flex;gap:8px;align-items:center;font-size:12px;color:var(--text-secondary)}.room-entry-control select{min-width:92px}.room-entry-feedback{margin:0;padding:8px 18px;font-size:12px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;flex-wrap:wrap}.room-entrance{touch-action:none;cursor:grab}.room-entrance:active,.room-entrance.is-entry-dragging{cursor:grabbing}.room-entrance.entry-unsaved rect{stroke-dasharray:4 3}.room-entrance:focus-visible{outline:2px solid var(--accent);outline-offset:4px}
+
+/* The inspector uses the workbench's full height, independent of toolbar wrapping. */
+@media(min-width:1000px) {
+.canvas-first .topology-workbench>.topology-inspector { position:relative; top:auto; right:auto; width:auto; max-width:none; height:auto; max-height:100%; min-height:0; padding:14px; align-self:start; overflow:auto; scrollbar-gutter:stable; }
+}
+.canvas-first .topology-inspector>.selection-heading { margin:0 0 12px; padding-bottom:10px; gap:8px; }
+.canvas-first .topology-inspector .inspector-device-heading h3 { font-size:16px; line-height:1.4; }
+.inspector-device-heading>p { margin:4px 0 12px; font-size:12px; color:var(--text-secondary); overflow-wrap:anywhere; }
+.canvas-first .topology-inspector .device-facts { margin:0 0 12px; }
+.device-facts>div { display:grid; grid-template-columns:64px minmax(0,1fr); gap:10px; padding:7px 0; border-bottom:1px solid var(--border); }
+.canvas-first .topology-inspector .device-facts dt,.canvas-first .topology-inspector .device-facts dd { margin:0; font-size:12px; line-height:1.5; }
+.canvas-first .topology-inspector .device-facts dt { color:var(--text-muted); }
+.canvas-first .topology-inspector .device-facts dd small { margin-top:3px; font-size:11px; line-height:1.5; }
+.inspector-network+.inspector-network { margin-top:8px; }
+.inspector-network strong { font-weight:600; }
+.inspector-actions { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
+.inspector-actions>button { min-width:0; padding:7px; min-height:34px; font-size:12px; white-space:normal; }
+.topology-inspector .device-quick-actions { margin:8px 0 12px; }
+.topology-inspector .device-placement-buttons>button { min-height:34px; font-size:12px; padding:6px 8px; }
+.inspector-connections { border-top:1px solid var(--border); padding-top:10px; }
+.inspector-connections>h3 { margin:0 0 8px; }
+.inspector-connections>p { margin-bottom:0; }
+.inspector-links { display:grid; gap:6px; }
+.inspector-links .neighbor-link { margin:0; padding:7px 9px; font-size:12px; }
+
+.inspector-network-heading { display:flex; align-items:flex-start; justify-content:space-between; gap:8px; }.inspector-network-heading strong { min-width:0; overflow-wrap:anywhere; }.inspector-network-heading .text-button { flex-shrink:0; font-size:12px; padding:0 3px; min-height:22px; }.inspector-network-heading .text-button:focus-visible { outline:2px solid var(--accent); }
+/* Topology commands follow the task sequence: context, actions, hierarchy, drawing. */
+.topology-command-header { flex-shrink:0; border-bottom:1px solid var(--border); background:var(--surface); }
+.topology-context-row { display:flex; align-items:center; gap:16px; padding:12px 14px 8px; min-width:0; }
+.topology-context-title { min-width:150px; margin-right:auto; display:flex; align-items:baseline; gap:12px; flex-wrap:wrap; }
+.topology-context-title h2 { font-size:16px; color:var(--text-strong); }
+.topology-context-title>span { font-size:12px; color:var(--text-secondary); }
+.topology-context-row>.search-box { width:280px; flex:0 1 280px; min-width:180px; }
+.topology-context-row .search-box input { width:100%; padding:8px 10px; }
+.canvas-first .topology-primary-toolbar { display:flex; align-items:flex-start; gap:12px 18px; padding:8px 14px 12px; min-height:0; }
+.topology-command-group { display:flex; align-items:center; gap:6px; flex-wrap:wrap; border-right:1px solid var(--border); padding-right:18px; }
+.topology-command-group:last-child { border-right:0; padding-right:0; }
+.topology-command-group>.command-group-label { font-size:11px; color:var(--text-muted); margin-right:3px; }
+.topology-command-group>button,.topology-command-group .action-menu>summary { min-height:34px; height:34px; padding:6px 10px; font-size:12px; border-radius:5px; box-sizing:border-box; box-shadow:none; line-height:20px; white-space:nowrap; }
+.topology-command-group .icon-button { width:34px; padding:6px; }
+.topology-command-group .diagram-export { margin:0; }
+.topology-command-group .unassigned-toggle[aria-pressed=true] { color:var(--accent); border-color:var(--accent-border); background:var(--accent-soft); }
+.new-network-notice { padding:8px 14px; margin:0; background:#edf6ff; color:#2452a0; font-size:12px; flex-shrink:0; }.new-network-notice>.text-button { padding-block:2px; }
+.topology-navigation { top:125px; bottom:12px; }.topology-navigation:has(.quick-network) { width:390px; }
+.quick-context { margin:0 0 14px; font-size:12px; line-height:1.6; color:var(--text-secondary); }.quick-parent { margin-bottom:14px; }
+.quick-network-body .quick-actions { justify-content:flex-end; gap:8px; }.quick-network-body .quick-actions>.primary { margin-left:auto; }
+.modal:has(.link-quick-editor) { width:min(760px,calc(100vw - 48px)); }
+.link-quick-editor form label:not(.checkbox-label) { display:grid; gap:7px; font-size:12px; color:var(--text-secondary); }
+.link-type-choice { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:20px; }
+.link-type-choice label { position:relative; border:1px solid var(--border); padding:12px 12px 12px 36px; border-radius:6px; cursor:pointer; }
+.link-type-choice label.active { background:var(--accent-soft); border-color:var(--accent-border); }
+.link-type-choice input { position:absolute; left:12px; top:13px; width:auto; }.link-type-choice small { color:var(--text-muted); line-height:1.5; }
+.link-endpoints { display:grid; grid-template-columns:1fr 1fr; gap:20px; }.link-endpoints section { min-width:0; border:1px solid var(--border); border-radius:6px; padding:14px; }.link-endpoints h3 { font-size:14px; margin-bottom:14px; }.link-endpoints label { margin-top:12px; }.link-endpoints input,.link-endpoints select { width:100%; min-width:0; }
+.link-status { margin:18px 0; max-width:320px; }.link-optional { border-top:1px solid var(--border); padding-top:12px; }.link-optional summary { font-size:12px; color:var(--accent); cursor:pointer; }.link-optional .form-grid { margin-top:14px; }.link-network-choice { margin:14px 0; padding:12px; border:1px solid var(--border); }.link-network-choice legend { font-size:12px; }.link-network-choice p { color:var(--text-muted); font-size:12px; }
+.sr-only { position:absolute!important; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); padding:0!important; border:0!important; }
+.layer-workflow-note { display:flex; gap:24px; padding:12px; background:var(--surface-soft); border:1px solid var(--border); border-radius:6px; margin:0 0 18px; font-size:12px; }.layer-workflow-note strong { display:block; margin-bottom:4px; }.layer-workflow-note span { color:var(--text-secondary); }
+.layer-edit-row .layer-device-count { min-width:44px; color:var(--text-muted); font-size:12px; cursor:default; }.layer-edit-row input { min-width:80px; flex:1; }.layer-edit-row button { white-space:nowrap; }
+.inspector-layer { display:grid; gap:6px; padding:8px 0; font-size:12px; color:var(--text-secondary); }.inspector-layer select { width:100%; min-width:0; }
+
+/* Reserve a footer for controls so every device and link remains clickable. */
+.canvas-first .canvas-controls { position:relative; order:10; bottom:auto; left:auto; flex-shrink:0; margin:0; padding:8px 12px; border:0; border-top:1px solid var(--border); border-radius:0; box-shadow:none; background:var(--surface); }
+
+.inspector-link-actions { display:flex; gap:8px; flex-wrap:wrap; margin:12px 0; }.inspector-link-actions>button { min-height:32px; padding:6px 8px; font-size:12px; }
+
+.link-quick-editor .link-type-choice input[type=radio] { width:14px; height:14px; min-height:14px; padding:0; margin:0; }.new-network-notice { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+/* Nested networks share one stable room canvas. */
+.network-selection-bar { display:flex; align-items:center; flex-wrap:wrap; gap:12px; padding:8px 14px; border-bottom:1px solid var(--border); background:var(--surface-soft); font-size:12px; color:var(--text-secondary); }
+.network-selection-bar strong { color:var(--text-strong); }.network-selection-bar .text-button { padding:0 4px; }
+.topology-room-scope { display:grid; gap:3px; font-size:11px; color:var(--text-secondary); min-width:150px; max-width:230px; }.topology-room-scope select { width:100%; padding:6px 8px; font-size:12px; }
+.network-selected>rect { stroke:#2452d8; stroke-width:2.5; }.network-related>rect { stroke:#2452d8; stroke-width:2; }.network-preview>rect { stroke:#2452d8; stroke-width:2; stroke-dasharray:7 5; fill:#eaf1ff; }
+.network-object-details form { margin:16px 0; }.network-object-details label { display:grid; gap:6px; margin:12px 0; font-size:12px; color:var(--text-secondary); }.network-object-details input,.network-object-details select { width:100%; min-width:0; }.network-object-details .field-note { font-size:11px; line-height:1.6; }.network-object-details .inspector-actions { margin:10px 0; }
+.network-object-details .inspector-network-list { display:grid; gap:6px; }.placement-preview { border-left:3px solid var(--accent); padding:10px; background:var(--accent-soft); }.quick-network-body>.editor-fieldset>.full-label { display:grid; gap:7px; margin:14px 0; }
+.topology-room-scope select:focus-visible,.network-selection-bar button:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+
+.topology-canvas [aria-disabled="true"] [role="button"] {cursor: progress; opacity: .65;}
+
+
+
+.network-layer-controls {margin:14px 0;padding:10px 12px;border:1px solid var(--border);border-radius:6px;background:var(--surface-soft);display:grid;gap:10px;}
+.network-object-details .network-layer-controls label {display:flex;align-items:center;gap:8px;margin:0;color:var(--text-strong);line-height:1.5;}
+.network-object-details .network-layer-controls input {width:16px;height:16px;flex-shrink:0;}
+.network-layer-controls>button {justify-self:start;font-size:12px;padding:6px 10px;}

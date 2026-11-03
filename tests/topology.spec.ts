@@ -22,7 +22,7 @@ async function fixture(request:APIRequestContext,page:Page,name:string){
  await expect(page.getByRole('heading',{name:'网络拓扑',exact:true,level:1})).toBeVisible();
  await expect(page.locator('.topology-workspace')).toHaveCount(1);
  await expect(page.locator('.heading-actions .topology-workspace')).toHaveCount(0);
- await expect(page.getByRole('button',{name:'网络与分层',exact:true})).toBeVisible();await openNetworkPanel(page);await expect(page.getByRole('button',{name:'新增网络分区',exact:true})).toHaveCount(1);await closeNetworkPanel(page);
+ await expect(page.getByRole('button',{name:'网络列表',exact:true})).toBeVisible();await openNetworkPanel(page);await expect(page.getByRole('button',{name:'新建网络',exact:true})).toHaveCount(1);await closeNetworkPanel(page);
  await page.getByRole('navigation',{name:'主导航'}).getByRole('link',{name:'空间总览',exact:true}).click();
  await expect(page.locator('.topology-workspace')).toHaveCount(0);
  await page.getByRole('navigation',{name:'主导航'}).getByRole('link',{name:'网络拓扑',exact:true}).click();
@@ -30,14 +30,14 @@ async function fixture(request:APIRequestContext,page:Page,name:string){
  return {s,project,roomA,roomB,devices};
 }
 async function createNetwork(page:Page,name:string,devices:Device[]){
- await openNetworkPanel(page);await page.getByRole('button',{name:'新增网络分区',exact:true}).click();await page.getByRole('button',{name:'高级编辑',exact:true}).click();
+ await openNetworkPanel(page);await page.getByRole('button',{name:'新建网络',exact:true}).click();await page.getByRole('combobox',{name:'网络所属机房',exact:true}).selectOption('__project');await page.getByRole('button',{name:'高级编辑',exact:true}).click();
  const dialog=page.locator('.editor-page:visible, dialog[open]');
  await dialog.getByLabel('网络名称',{exact:true}).fill(name);
  await dialog.getByLabel('VLAN ID',{exact:true}).fill('100');
  await dialog.getByLabel('网段 CIDR',{exact:true}).fill('10.20.0.0/24');
  await dialog.getByLabel('网关地址',{exact:true}).fill('10.20.0.1');
  for(const d of devices)await dialog.getByRole('checkbox',{name:'网络成员 '+d.name,exact:true}).check();
- await dialog.getByRole('button',{name:'保存网络分区',exact:true}).click();await expect(dialog).toHaveCount(0);
+ await dialog.getByRole('button',{name:'保存网络',exact:true}).click();await expect(dialog).toHaveCount(0);
 }
 
 test('双视图：网络分区、跨机房物理连接、详情、导出与设备定位',async({page,request})=>{
@@ -49,7 +49,7 @@ test('双视图：网络分区、跨机房物理连接、详情、导出与设�
  await dialog.getByRole('combobox',{name:'端点B设备',exact:true}).selectOption(devices[2].id);
  await dialog.getByLabel('端点 A 端口',{exact:true}).fill('Ethernet1/1');await dialog.getByLabel('端点 B 端口',{exact:true}).fill('eth0');
  await dialog.getByRole('combobox',{name:'连接确认状态',exact:true}).selectOption('confirmed');
- await dialog.getByRole('checkbox',{name:'承载网络 业务网络',exact:true}).check();
+ await dialog.locator('.link-optional summary').click();await dialog.getByRole('checkbox',{name:'承载网络 业务网络',exact:true}).check();
  await dialog.getByLabel('速率 Gbps',{exact:true}).fill('25');await dialog.getByLabel('介质',{exact:true}).fill('光纤');
  await dialog.getByRole('button',{name:'保存设备链路',exact:true}).click();await expect(dialog).toHaveCount(0);
  let s=await state(request);const saved=s.links.find(l=>l.projectId===project.id)!;expect(saved.sourcePort).toBe('Ethernet1/1');expect(saved.status).toBe('confirmed');
@@ -83,36 +83,36 @@ test('双视图：网络分区、跨机房物理连接、详情、导出与设�
 
 test('网络推演预览只读、待确认连接及端口冲突保护',async({page,request})=>{
  const {devices,project}=await fixture(request,page,'拓扑推演验收');await createNetwork(page,'管理网络',devices);
- await openNetworkPanel(page);await page.getByRole('button',{name:'筛选网络 管理网络',exact:true}).click();const before=await state(request);
+ await openNetworkPanel(page);await page.getByRole('button',{name:'定位网络 管理网络',exact:true}).click();const before=await state(request);
  await openNetworkPanel(page);await page.locator('.action-menu summary').filter({hasText:'拓扑更多操作'}).click();await page.getByRole('button',{name:'按型号推演',exact:true}).click();const dialog=page.locator('.editor-page:visible, dialog[open]');await expect(dialog.getByText(/2 条候选连接/)).toBeVisible();expect((await state(request)).revision).toBe(before.revision);
  await dialog.getByRole('button',{name:'记录待确认连接',exact:true}).click();await expect(dialog).toHaveCount(0);
  let s=await state(request);const links=s.links.filter(l=>l.projectId===project.id);expect(links).toHaveLength(2);expect(links.every(l=>l.status==='pending'&&l.kind==='logical'&&l.origin==='inferred')).toBeTruthy();
  await openCanvasMenu(page);await page.getByRole('button',{name:'链路清单',exact:true}).click();const row=page.locator('.link-table tbody tr').filter({hasText:'服务器测试'});
  await row.getByRole('button',{name:'编辑链路 接入测试 到 服务器测试',exact:true}).click();
- await dialog.getByRole('combobox',{name:'连接类型',exact:true}).selectOption('physical');await dialog.getByRole('combobox',{name:'连接确认状态',exact:true}).selectOption('confirmed');
+ await dialog.getByRole('radio',{name:'物理连接',exact:true}).check();await dialog.getByRole('combobox',{name:'连接确认状态',exact:true}).selectOption('confirmed');
  await dialog.getByRole('button',{name:'保存设备链路',exact:true}).click();await expect(dialog.getByRole('alert')).toContainText('两端端口');
  await dialog.getByLabel('端点 A 端口',{exact:true}).fill('port1');await dialog.getByLabel('端点 B 端口',{exact:true}).fill('eth0');await dialog.getByRole('button',{name:'保存设备链路',exact:true}).click();await expect(dialog).toHaveCount(0);
  await openNetworkPanel(page);await page.getByRole('button',{name:'新增链路',exact:true}).click();await dialog.getByRole('combobox',{name:'端点A设备',exact:true}).selectOption(devices[1].id);await dialog.getByRole('combobox',{name:'端点B设备',exact:true}).selectOption(devices[0].id);
  await dialog.getByLabel('端点 A 端口',{exact:true}).fill('port1');await dialog.getByLabel('端点 B 端口',{exact:true}).fill('uplink1');
  await dialog.getByRole('button',{name:'保存设备链路',exact:true}).click();await expect(dialog.getByRole('alert')).toContainText('物理端口已被链路');
- page.once('dialog',dialog=>dialog.accept());await dialog.getByRole('button',{name:'返回查看',exact:true}).click();s=await state(request);expect(s.links.filter(l=>l.projectId===project.id)).toHaveLength(2);
- await openNetworkPanel(page);await page.getByRole('button',{name:'编辑当前网络',exact:true}).click();await page.getByRole('button',{name:'高级编辑',exact:true}).click();await dialog.getByRole('checkbox',{name:'网络成员 服务器测试',exact:true}).uncheck();await dialog.getByRole('button',{name:'保存网络分区',exact:true}).click();await expect(dialog.getByRole('alert')).toContainText('链路两端必须都属于');
+ page.once('dialog',dialog=>dialog.accept());await dialog.getByRole('button',{name:'关闭弹窗',exact:true}).click();s=await state(request);expect(s.links.filter(l=>l.projectId===project.id)).toHaveLength(2);
+ await openNetworkPanel(page);await page.getByRole('button',{name:'编辑当前网络',exact:true}).click();await page.getByRole('button',{name:'高级编辑',exact:true}).click();await dialog.getByRole('checkbox',{name:'网络成员 服务器测试',exact:true}).uncheck();await dialog.getByRole('button',{name:'保存网络',exact:true}).click();await expect(dialog.getByRole('alert')).toContainText('链路两端必须都属于');
 });
 
 test('快捷创建重名提示、批量分组及双上联连接',async({page,request})=>{
  const {devices,project}=await fixture(request,page,'快捷网络验收');
- await openNetworkPanel(page);await page.getByRole('button',{name:'新增网络分区',exact:true}).click();
+ await openNetworkPanel(page);await page.getByRole('button',{name:'新建网络',exact:true}).click();
  const quick=page.getByRole('region',{name:'快速网络配置',exact:true});await expect(quick).toBeVisible();await expect(page.locator('.editor-page')).toHaveCount(0);
- await quick.getByLabel('网络名称',{exact:true}).fill('数据网络');await quick.getByRole('button',{name:'创建网络',exact:true}).click();
- await expect(quick).toHaveCount(0);await expect(page.getByRole('navigation',{name:'网络层级'})).toContainText('数据网络');
+ await quick.getByLabel('网络名称',{exact:true}).fill('数据网络');await quick.getByRole('combobox',{name:'网络所属机房',exact:true}).selectOption('__project');await quick.getByRole('button',{name:'创建网络',exact:true}).click();
+ await expect(quick).toHaveCount(0);await expect(page.getByRole('button',{name:'选择网络 数据网络',exact:true})).toBeVisible();await page.getByRole('button',{name:'定位新网络',exact:true}).click();await expect(page.locator('.network-selection-bar')).toContainText('数据网络');
  await openNetworkPanel(page);await page.getByRole('button',{name:'添加现有设备',exact:true}).click();
  const members=page.getByRole('region',{name:'批量加入网络',exact:true});await members.getByRole('button',{name:/全选筛选结果/}).click();await members.getByRole('button',{name:'加入网络',exact:true}).click();
  await expect(members).toHaveCount(0);
  let s=await state(request);const network=s.networks.find(n=>n.projectId===project.id&&n.name==='数据网络')!;expect(network.deviceIds.sort()).toEqual(devices.map(d=>d.id).sort());
- await openNetworkPanel(page);await page.getByRole('button',{name:'新增子网络',exact:true}).click();await quick.getByLabel('网络名称',{exact:true}).fill('数据网络');
+ await openNetworkPanel(page);await page.getByRole('button',{name:'新建网络',exact:true}).click();await quick.getByLabel('网络名称',{exact:true}).fill('数据网络');
  await expect(quick.getByRole('alert')).toContainText('项目中已有');await expect(quick.getByRole('button',{name:'创建网络',exact:true})).toBeDisabled();
  expect((await state(request)).revision).toBe(s.revision);
- await quick.getByRole('button',{name:'打开已有网络',exact:true}).click();await expect(quick).toHaveCount(0);
+ await quick.getByRole('button',{name:'定位已有网络',exact:true}).click();await expect(quick).toHaveCount(0);
  await openNetworkPanel(page);await page.getByRole('button',{name:'批量连线',exact:true}).click();const batch=page.getByRole('region',{name:'批量建立连接',exact:true});
  await batch.getByRole('checkbox',{name:'选择上联 核心测试',exact:true}).check();await batch.getByRole('checkbox',{name:'选择上联 接入测试',exact:true}).check();
  await batch.getByRole('checkbox',{name:'选择设备 服务器测试',exact:true}).check();await expect(batch).toContainText('将新增 2 条');
@@ -131,7 +131,7 @@ test('多网络自动排列紧凑，界面收起恢复不修改业务数据',asy
  const net=s.networks.find(n=>n.projectId===project.id&&n.name==='计算分区')!,empty=s.networks.find(n=>n.projectId===project.id&&n.name==='空分区')!;
  const moved=await request.post(`/api/networks/${net.id}/position`,{data:{revision:s.revision,deviceId:devices[2].id,position:{x:2400,y:1000}}});expect(moved.ok()).toBe(true);s=await moved.json();
  await page.reload();await page.getByRole('combobox',{name:'选择项目',exact:true}).selectOption(project.id);await page.getByRole('navigation',{name:'主导航'}).getByRole('link',{name:'网络拓扑',exact:true}).click();
- await expect(page.locator(`[data-topology-lane="${empty.id}"]`)).toHaveCount(0);
+ await expect(page.locator(`[data-topology-lane="${empty.id}"]`)).toBeVisible();
  await openCanvasMenu(page);await page.getByRole('button',{name:'自动排列',exact:true}).click();await expect.poll(async()=>(await state(request)).revision).toBe(s.revision+1);
  let after=await state(request);expect(after.links).toEqual(s.links);expect(after.devices).toEqual(s.devices);expect(after.networks.find(n=>n.id===net.id)?.devicePositions?.[devices[2].id]).toEqual({x:0,y:0});
  const svg=page.getByRole('group',{name:'设备连接与网络分区图',exact:true});

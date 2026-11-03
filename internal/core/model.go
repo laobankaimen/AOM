@@ -79,6 +79,7 @@ type Device struct {
 	Source           string       `json:"source"`
 }
 type State struct {
+	DeviceRoles   []DeviceRole     `json:"deviceRoles,omitempty"`
 	Templates     []ModuleTemplate `json:"templates"`
 	Networks      []Network        `json:"networks"`
 	Links         []Link           `json:"links"`
@@ -274,6 +275,13 @@ func Validate(s *State) error {
 		}
 	}
 
+	if err := ValidateDeviceRoles(s); err != nil {
+		return err
+	}
+	roles := map[string]bool{}
+	for _, role := range s.RoleDefinitions() {
+		roles[role.ID] = true
+	}
 	names := map[string]bool{}
 	for _, v := range s.Models {
 		key := strings.ToLower(strings.TrimSpace(v.Name))
@@ -281,10 +289,8 @@ func Validate(s *State) error {
 			return fmt.Errorf("型号名称重复或高度无效（0代表待确认，最大42U）")
 		}
 		names[key] = true
-		switch v.Role {
-		case "server", "core", "aggregation", "access", "management", "storage", "infra":
-		default:
-			return fmt.Errorf("型号角色无效")
+		if !roles[v.Role] {
+			return fmt.Errorf("型号角色无效，请先添加设备角色")
 		}
 	}
 	assets := map[string]bool{}

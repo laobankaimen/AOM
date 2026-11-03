@@ -276,3 +276,50 @@ func TestAutoLayoutOnlyClearsRequestedDiagramCoordinates(t *testing.T) {
 		t.Fatal("stale revision accepted")
 	}
 }
+
+func TestDeleteNetworkLiftsChildrenAndPreservesAssetsAndLinks(t *testing.T) {
+	h, store := testAPI(t)
+	s, _ := store.Snapshot()
+	_, err := store.Apply(s.Revision, "fixture", func(s *core.State) (string, error) {
+		for _, id := range []string{"a", "b"} {
+			s.Devices = append(s.Devices, core.Device{ID: id, AssetTag: id, Name: id, ModelID: "model-r722", ModuleID: s.Modules[0].ID, Status: "pending"})
+		}
+		project := s.Projects[0].ID
+		s.Networks = append(s.Networks,
+			core.Network{ID: "root", ProjectID: project, Name: "根网络", Purpose: "business", Color: "#497cda", DeviceIDs: []string{}},
+			core.Network{ID: "middle", ProjectID: project, ParentID: "root", Name: "中间网络", Purpose: "business", Color: "#497cda", DeviceIDs: []string{"a", "b"}},
+			core.Network{ID: "leaf", ProjectID: project, ParentID: "middle", Name: "叶子网络", Purpose: "management", Color: "#159784", DeviceIDs: []string{"a", "b"}},
+		)
+		s.Links = append(s.Links, core.Link{ID: "wire", ProjectID: project, SourceID: "a", TargetID: "b", Kind: "physical", Status: "confirmed", SourcePort: "Eth1", TargetPort: "eth0", NetworkIDs: []string{"middle", "leaf"}, Origin: "manual"})
+		return "fixture", nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	before, _ := store.Snapshot()
+	// A stale deletion cannot reparent children or detach link labels.
+	stale := call(h, "DELETE", "/api/networks/middle", fmt.Sprintf(`{"revision":%d,"detach":true,"liftChildren":true}`, before.Revision-1))
+	if stale.Code != 409 {
+		t.Fatal(stale.Body.String())
+	}
+	unchanged, _ := store.Snapshot()
+	if !reflect.DeepEqual(before, unchanged) {
+		t.Fatal("stale delete changed state")
+	}
+	response := call(h, "DELETE", "/api/networks/middle", fmt.Sprintf(`{"revision":%d,"detach":true,"liftChildren":true}`, before.Revision))
+	if response.Code != 200 {
+		t.Fatal(response.Body.String())
+	}
+	after, _ := store.Snapshot()
+	if after.Network("middle") != nil || after.Network("leaf").ParentID != "root" {
+		t.Fatal("child hierarchy not preserved")
+	}
+	if !reflect.DeepEqual(before.Devices, after.Devices) || !reflect.DeepEqual(before.Network("leaf").DeviceIDs, after.Network("leaf").DeviceIDs) {
+		t.Fatal("assets or child membership changed")
+	}
+	expected := before.Links[0]
+	expected.NetworkIDs = []string{"leaf"}
+	if len(after.Links) != 1 || !reflect.DeepEqual(expected, after.Links[0]) {
+		t.Fatal("physical link or unrelated labels changed")
+	}
+}

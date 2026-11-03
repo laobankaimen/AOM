@@ -33,7 +33,10 @@ func TestEncryptedStorePersistsAtomicSnapshotAndAudit(t *testing.T) {
 	}
 	before, _ := s.Snapshot()
 	after, e := s.Apply(before.Revision, "private.audit", func(s *State) (string, error) {
+		s.DeviceRoles = append(s.DeviceRoles, DeviceRole{ID: "encrypted-role", Name: "SECRET-ROLE", Color: "#123456", BaseRole: "access"})
+		s.Models = append(s.Models, Model{ID: "encrypted-model", Name: "SECRET-MODEL", Role: "encrypted-role", UHeight: 1})
 		d := testDevice(*s, "encrypted-device", 1)
+		d.ModelID = "encrypted-model"
 		d.SN = "SECRET-SERIAL-9384"
 		s.Devices = append(s.Devices, d)
 		return "sensitive audit", nil
@@ -43,7 +46,7 @@ func TestEncryptedStorePersistsAtomicSnapshotAndAudit(t *testing.T) {
 	}
 	s.Close()
 	raw, _ := os.ReadFile(filepath.Join(dir, "app.vault"))
-	for _, secret := range []string{"SQLite format", "SECRET-SERIAL-9384", "sensitive audit", "encrypted-device"} {
+	for _, secret := range []string{"SQLite format", "SECRET-SERIAL-9384", "sensitive audit", "encrypted-device", "SECRET-ROLE", "SECRET-MODEL"} {
 		if bytes.Contains(raw, []byte(secret)) {
 			t.Fatal("plaintext in vault")
 		}
@@ -61,6 +64,9 @@ func TestEncryptedStorePersistsAtomicSnapshotAndAudit(t *testing.T) {
 	restored, e := s.Snapshot()
 	if e != nil || !reflect.DeepEqual(after, restored) {
 		t.Fatal("snapshot serialization lost transaction", e)
+	}
+	if restored.RoleBase("encrypted-role") != "access" || restored.ResolveRole("SECRET-ROLE") != "encrypted-role" {
+		t.Fatal("encrypted role definition lost")
 	}
 	audits, e := s.Audits()
 	if e != nil || len(audits) != 2 {

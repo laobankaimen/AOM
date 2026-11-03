@@ -112,7 +112,7 @@ func ImportModelDefinitions(s *State, content string, allowNew bool) ([]string, 
 		return nil, e
 	}
 	created := []string{}
-	roles := map[string]string{"服务器": "server", "计算服务器": "server", "核心": "core", "核心交换": "core", "汇聚": "aggregation", "接入": "access", "业务接入": "access", "管理接入": "management", "存储": "storage", "基础设施": "infra"}
+
 	for i, row := range rows {
 		name := csvField(cols, row, "model")
 		var existing *Model
@@ -122,9 +122,10 @@ func ImportModelDefinitions(s *State, content string, allowNew bool) ([]string, 
 				break
 			}
 		}
-		role := csvField(cols, row, "role")
-		if v := roles[role]; v != "" {
-			role = v
+		roleText := csvField(cols, row, "role")
+		role := s.ResolveRole(roleText)
+		if roleText != "" && role == "" {
+			return nil, fmt.Errorf("第%d行设备角色不存在，请先在型号库添加角色", lines[i])
 		}
 		height := 0
 		heightText := csvField(cols, row, "u_height")
@@ -143,14 +144,8 @@ func ImportModelDefinitions(s *State, content string, allowNew bool) ([]string, 
 		if !allowNew {
 			return nil, fmt.Errorf("第%d行型号不存在：%s；可填写角色并启用注册新型号", lines[i], name)
 		}
-		valid := false
-		for _, v := range []string{"server", "core", "aggregation", "access", "management", "storage", "infra"} {
-			if role == v {
-				valid = true
-			}
-		}
-		if !textOK(name, 100) || !valid {
-			return nil, fmt.Errorf("第%d行未知型号%s，请填写设备角色（服务器/核心/汇聚/接入/管理接入/存储/基础设施）", lines[i], name)
+		if !textOK(name, 100) || role == "" {
+			return nil, fmt.Errorf("第%d行未知型号%s，请填写设备角色", lines[i], name)
 		}
 		s.Models = append(s.Models, Model{ID: ID("model"), Name: name, Vendor: csvField(cols, row, "vendor"), Role: role, UHeight: height})
 		created = append(created, name)

@@ -1,3 +1,5 @@
+export interface DeviceRole {id:string;name:string;color:string;baseRole:string}
+export {roleNames,roleColors} from "./deviceRoles";
 export interface Project { id: string; name: string }
 export interface RoomEntrance {side:string;offset:number}
 export interface Site { entrance?:RoomEntrance; id: string; name: string; projectId: string }
@@ -6,11 +8,9 @@ export interface Rack { id: string; moduleId: string; name: string; side: string
 export interface Infra { order?:number; side: string; afterRack: number; placement: string; id: string; moduleId: string; kind: string; name: string }
 export interface Model { id: string; name: string; vendor: string; role: string; uHeight: number; ports: string }
 export interface Device {topologyPosition?:CanvasPoint; id: string; assetTag: string; name: string; modelId: string; moduleId: string; rackId: string; startU: number; ip: string; sn: string; status: string; note: string; source: string }
-export interface State {templates:ModuleTemplate[]; networks: NetworkSegment[]; links: DeviceLink[]; projects: Project[]; schemaVersion: number; revision: number; sites: Site[]; modules: Module[]; racks: Rack[]; infra: Infra[]; models: Model[]; devices: Device[] }
+export interface State {deviceRoles?:DeviceRole[];templates:ModuleTemplate[]; networks: NetworkSegment[]; links: DeviceLink[]; projects: Project[]; schemaVersion: number; revision: number; sites: Site[]; modules: Module[]; racks: Rack[]; infra: Infra[]; models: Model[]; devices: Device[] }
 export interface Audit { id: number; time: string; action: string; summary: string; revision: number }
 export interface Preview { total: number; placed: number; pending: number; revision: number; rows: { device: Device; reason: string; line: number }[] }
-export const roleNames: Record<string, string> = { server: '计算服务器', core: '核心交换', aggregation: '汇聚交换', access: '业务接入', management: '管理接入', storage: '存储设备', infra: '基础设施' };
-export const roleColors: Record<string, string> = { server: '#497cda', core: '#8c67cf', aggregation: '#a786df', access: '#1b9c88', management: '#51b5a3', storage: '#c49745', infra: '#7e8997' };
 export const statuses: Record<string, string> = { pending: '待上架', installed: '已上架', maintenance: '维护中' };
 export const blankDevice = (): Device => ({ id: '', assetTag: '', name: '', modelId: '', moduleId: '', rackId: '', startU: 0, ip: '', sn: '', status: 'pending', note: '', source: 'manual' });
 export const blankModel = (): Model => ({ id: '', name: '', vendor: '', role: 'server', uHeight: 2, ports: '' });
@@ -30,7 +30,7 @@ export const moduleProducts = ["曙光数创 C2000（SG6600）", "曙光数创 C
 
 export interface CanvasPoint {x:number;y:number}
 export interface NetworkLayer {id:string;name:string}
-export interface NetworkSegment {layers?:NetworkLayer[];deviceLayers?:Record<string,string>;parentId?:string;position?:CanvasPoint;devicePositions?:Record<string,CanvasPoint>;id:string;projectId:string;name:string;purpose:string;vlan:number;cidr:string;gateway:string;color:string;deviceIds:string[];note:string}
+export interface NetworkSegment {layersVisible?:boolean;siteId?:string;roomScope?:string;positionSpace?:string;layers?:NetworkLayer[];deviceLayers?:Record<string,string>;parentId?:string;position?:CanvasPoint;devicePositions?:Record<string,CanvasPoint>;id:string;projectId:string;name:string;purpose:string;vlan:number;cidr:string;gateway:string;color:string;deviceIds:string[];note:string}
 export interface DeviceLink {id:string;projectId:string;sourceId:string;targetId:string;sourcePort:string;targetPort:string;networkIds:string[];kind:'physical'|'logical';medium:string;speedGbps:number;status:'pending'|'confirmed';origin:'manual'|'inferred';note:string}
 export const networkPurposes: Record<string,string> = {business:'业务网络',management:'管理网络',storage:'存储网络',interconnect:'互联网络',other:'其他网络'};
 

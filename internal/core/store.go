@@ -44,6 +44,7 @@ func Open(path string) (*Store, error) {
 	schema := `PRAGMA foreign_keys=ON; PRAGMA busy_timeout=5000; PRAGMA journal_mode=DELETE; PRAGMA synchronous=FULL;
  CREATE TABLE IF NOT EXISTS meta(id INTEGER PRIMARY KEY CHECK(id=1),schema_version INTEGER NOT NULL,revision INTEGER NOT NULL);
  CREATE TABLE IF NOT EXISTS templates(id TEXT PRIMARY KEY,payload TEXT NOT NULL);
+ CREATE TABLE IF NOT EXISTS device_roles(id TEXT PRIMARY KEY,payload TEXT NOT NULL);
  CREATE TABLE IF NOT EXISTS projects(id TEXT PRIMARY KEY,payload TEXT NOT NULL);
  CREATE TABLE IF NOT EXISTS sites(id TEXT PRIMARY KEY,payload TEXT NOT NULL);
  CREATE TABLE IF NOT EXISTS modules(id TEXT PRIMARY KEY,site_id TEXT NOT NULL REFERENCES sites(id),payload TEXT NOT NULL);
@@ -122,6 +123,12 @@ func loadState(q queryer) (State, error) {
 		return s, err
 	}
 	var err error
+	if s.DeviceRoles, err = loadRows[DeviceRole](q, "device_roles"); err != nil {
+		return s, err
+	}
+	if len(s.DeviceRoles) == 0 {
+		s.DeviceRoles = nil
+	}
 	if s.Templates, err = loadRows[ModuleTemplate](q, "templates"); err != nil {
 		return s, err
 	}
@@ -153,7 +160,7 @@ func loadState(q queryer) (State, error) {
 	return s, err
 }
 func saveState(tx *sql.Tx, s State) error {
-	for _, table := range []string{"templates", "links", "networks", "devices", "infrastructure", "racks", "modules", "sites", "models", "projects"} {
+	for _, table := range []string{"device_roles", "templates", "links", "networks", "devices", "infrastructure", "racks", "modules", "sites", "models", "projects"} {
 		if _, err := tx.Exec("DELETE FROM " + table); err != nil {
 			return err
 		}
@@ -166,6 +173,11 @@ func saveState(tx *sql.Tx, s State) error {
 		args = append(args, string(b))
 		_, err = tx.Exec(query, args...)
 		return err
+	}
+	for _, v := range s.DeviceRoles {
+		if err := put("INSERT INTO device_roles(id,payload) VALUES(?,?)", v, v.ID); err != nil {
+			return err
+		}
 	}
 	for _, v := range s.Templates {
 		if err := put("INSERT INTO templates(id,payload) VALUES(?,?)", v, v.ID); err != nil {

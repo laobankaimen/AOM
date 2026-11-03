@@ -13,6 +13,10 @@ type CanvasPoint struct {
 	Y float64 `json:"y"`
 }
 type Network struct {
+	LayersVisible   *bool                  `json:"layersVisible,omitempty"`
+	SiteID          string                 `json:"siteId,omitempty"`
+	RoomScope       string                 `json:"roomScope,omitempty"`
+	PositionSpace   string                 `json:"positionSpace,omitempty"`
 	Layers          []NetworkLayer         `json:"layers,omitempty"`
 	DeviceLayers    map[string]string      `json:"deviceLayers,omitempty"`
 	ParentID        string                 `json:"parentId"`
@@ -100,6 +104,23 @@ func ValidateNetwork(s *State, checkID func(string) bool) error {
 		}
 		if !validProject {
 			return fmt.Errorf("网络「%s」所属项目不存在，请重新选择项目", n.Name)
+		}
+		if n.RoomScope != "" && n.RoomScope != "project" {
+			return fmt.Errorf("网络机房范围无效")
+		}
+		if n.SiteID != "" {
+			validRoom := false
+			for _, room := range s.Sites {
+				if room.ID == n.SiteID && room.ProjectID == n.ProjectID {
+					validRoom = true
+				}
+			}
+			if !validRoom || n.RoomScope == "project" {
+				return fmt.Errorf("网络所属机房须属于当前项目，跨机房网络不同时指定单个机房")
+			}
+		}
+		if n.PositionSpace != "" && n.PositionSpace != "parent" {
+			return fmt.Errorf("网络位置坐标系无效")
 		}
 		if !textOK(n.Name, 80) {
 			return fmt.Errorf("请填写网络名称，长度不能超过80个字")
@@ -252,7 +273,7 @@ func SuggestLinks(s State, networkID string) ([]Link, error) {
 	for _, id := range n.DeviceIDs {
 		child := s.Device(id)
 		m := s.Model(child.ModelID)
-		level, ok := levels[m.Role]
+		level, ok := levels[s.RoleBase(m.Role)]
 		if !ok || level == 0 {
 			continue
 		}
@@ -264,7 +285,7 @@ func SuggestLinks(s State, networkID string) ([]Link, error) {
 					other = l.TargetID
 				}
 				if device := s.Device(other); device != nil {
-					parentLevel, exists := levels[s.Model(device.ModelID).Role]
+					parentLevel, exists := levels[s.RoleBase(s.Model(device.ModelID).Role)]
 					if exists && parentLevel < level {
 						linked = true
 					}
@@ -279,7 +300,7 @@ func SuggestLinks(s State, networkID string) ([]Link, error) {
 		bestLocal := false
 		for _, candidateID := range n.DeviceIDs {
 			candidate := s.Device(candidateID)
-			candidateLevel, ok := levels[s.Model(candidate.ModelID).Role]
+			candidateLevel, ok := levels[s.RoleBase(s.Model(candidate.ModelID).Role)]
 			if !ok || candidateLevel >= level {
 				continue
 			}
