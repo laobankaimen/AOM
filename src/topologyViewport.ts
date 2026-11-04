@@ -4,16 +4,19 @@ export function topologyFitZoom(width:number,height:number,viewportWidth:number,
 export function anchoredScroll(scroll:number,anchor:number,before:number,after:number){return (scroll+anchor-canvasPadding)/before*after+canvasPadding-anchor}
 export function useTopologyViewport(canvas:Ref<HTMLElement|undefined>,bounds:()=>{width:number;height:number},zoom:()=>number,update:(zoom:number)=>void,locked:()=>boolean){
  const viewport=ref({width:1000,height:600});
- const fitting=ref(false);let observer:ResizeObserver|undefined;
- const viewSize=computed(()=>({width:Math.max(bounds().width,(viewport.value.width-canvasPadding*2)/(zoom()/100)),height:Math.max(bounds().height,(viewport.value.height-canvasPadding*2)/(zoom()/100))}));
+ const fitting=ref(false),retained=ref({width:0,height:0});let observer:ResizeObserver|undefined;
+ // Keep the visible world area while content shrinks. Otherwise the browser
+ // clamps scrollLeft/Top and a correctly saved drop appears to bounce back.
+ function preserve(width?:number,height?:number){const el=canvas.value;if(!el)return;const scale=zoom()/100;retained.value={width:Math.max(retained.value.width,(el.scrollLeft+(width??el.clientWidth)-canvasPadding*2)/scale),height:Math.max(retained.value.height,(el.scrollTop+(height??el.clientHeight)-canvasPadding*2)/scale)}}
+ const viewSize=computed(()=>({width:Math.max(bounds().width,retained.value.width,(viewport.value.width-canvasPadding*2)/(zoom()/100)),height:Math.max(bounds().height,retained.value.height,(viewport.value.height-canvasPadding*2)/(zoom()/100))}));
  const style=computed(()=>({width:viewSize.value.width*zoom()/100+'px',height:viewSize.value.height*zoom()/100+'px',flexShrink:0}));
  async function change(next:number,x?:number,y?:number){if(locked())return;const el=canvas.value;if(!el)return;fitting.value=false;const old=zoom()/100,value=Math.max(10,Math.min(400,next));const ax=x??el.clientWidth/2,ay=y??el.clientHeight/2,left=el.scrollLeft,top=el.scrollTop;update(value);await nextTick();el.scrollLeft=anchoredScroll(left,ax,old,value/100);el.scrollTop=anchoredScroll(top,ay,old,value/100)}
- async function fit(){if(locked())return;const el=canvas.value;if(!el||!el.clientWidth||!el.clientHeight)return;fitting.value=true;update(topologyFitZoom(bounds().width,bounds().height,el.clientWidth,el.clientHeight));await nextTick();el.scrollLeft=0;el.scrollTop=0}
- async function actual(){if(locked())return;fitting.value=false;update(100);await nextTick();if(canvas.value){canvas.value.scrollLeft=0;canvas.value.scrollTop=0}}
+ async function fit(){if(locked())return;const el=canvas.value;if(!el||!el.clientWidth||!el.clientHeight)return;fitting.value=true;retained.value={width:0,height:0};update(topologyFitZoom(bounds().width,bounds().height,el.clientWidth,el.clientHeight));await nextTick();el.scrollLeft=0;el.scrollTop=0}
+ async function actual(){if(locked())return;fitting.value=false;retained.value={width:0,height:0};update(100);await nextTick();if(canvas.value){canvas.value.scrollLeft=0;canvas.value.scrollTop=0}}
  function wheel(e:WheelEvent){if(locked())return;e.preventDefault();const el=canvas.value;if(!el)return;if(e.ctrlKey||e.metaKey){const box=el.getBoundingClientRect();void change(Math.round(zoom()*Math.exp(-e.deltaY*.002)),e.clientX-box.left,e.clientY-box.top)}else{el.scrollLeft+=e.shiftKey?e.deltaY:e.deltaX;el.scrollTop+=e.shiftKey?0:e.deltaY}}
  onMounted(()=>{if(canvas.value){canvas.value.addEventListener('wheel',wheel,{passive:false});viewport.value={width:canvas.value.clientWidth,height:canvas.value.clientHeight};observer=new ResizeObserver(()=>{if(canvas.value&&!locked())viewport.value={width:canvas.value.clientWidth,height:canvas.value.clientHeight};});observer.observe(canvas.value)}});
  const resize=()=>{if(fitting.value&&!locked())void fit()};onMounted(()=>window.addEventListener('resize',resize));
  onBeforeUnmount(()=>{window.removeEventListener('resize',resize);observer?.disconnect();canvas.value?.removeEventListener('wheel',wheel)});
- watch(()=>[bounds().width,bounds().height],()=>{if(fitting.value&&!locked())void fit()});
- return {style,viewSize,fit,actual,change,fitting};
+ watch(()=>[bounds().width,bounds().height],()=>{preserve();fitting.value=false},{flush:'pre'});
+ return {style,viewSize,fit,actual,change,fitting,preserve};
 }

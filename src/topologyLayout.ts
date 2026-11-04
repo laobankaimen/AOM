@@ -14,15 +14,23 @@ export function compactTopologyLayout(groups:LayoutGroup[],availableWidth:number
   const columns=Math.max(1,Math.min(maxColumns,maxPerRole,Math.floor((usable-80)/(nodeWidth+gapX))));
   const local=new Map<string,{x:number;y:number}>();
   const occupied:{x:number;y:number}[]=[];
-  for(const n of g.items)if(valid(n.position)){const p={x:n.position!.x,y:n.position!.y};let blocker;while((blocker=occupied.find(q=>p.x<q.x+nodeWidth+16&&p.x+nodeWidth+16>q.x&&p.y<q.y+nodeHeight+16&&p.y+nodeHeight+16>q.y))){p.y=blocker.y+nodeHeight+36}local.set(n.id,p);occupied.push(p)}
+  for(const n of g.items)if(!g.layers?.length&&valid(n.position)){const p={x:n.position!.x,y:n.position!.y};let blocker;while((blocker=occupied.find(q=>p.x<q.x+nodeWidth+16&&p.x+nodeWidth+16>q.x&&p.y<q.y+nodeHeight+16&&p.y+nodeHeight+16>q.y))){p.y=blocker.y+nodeHeight+36}local.set(n.id,p);occupied.push(p)}
   const overlaps=(p:{x:number;y:number})=>occupied.some(q=>p.x<q.x+nodeWidth+8&&p.x+nodeWidth+8>q.x&&p.y<q.y+nodeHeight+8&&p.y+nodeHeight+8>q.y);
   let y=0;const bands:{id:string;name:string;y:number;top:number;height:number}[]=[];
   const layers=g.layers?.length?g.layers:topologyLevels.map((name,i)=>({id:String(i),name}));
   for(let role=0;role<layers.length;role++){
    const layer=layers[role],items=g.items.filter(n=>g.layers?.length?n.layerId===layer.id:topologyLevel(n.role)===role);
    if(!items.length&&!g.layers?.length)continue;
-   const bandTop=y,automatic=items.filter(n=>!local.has(n.id));let slot=0,maxY=y;
-   if(g.layers?.length)for(const item of items){const p=local.get(item.id);if(p&&p.y<bandTop){p.y=bandTop;let blocker;while((blocker=occupied.find(q=>q!==p&&p.x<q.x+nodeWidth+16&&p.x+nodeWidth+16>q.x&&p.y<q.y+nodeHeight+16&&p.y+nodeHeight+16>q.y))){p.y=blocker.y+nodeHeight+36}}}
+   const bandTop=y;let slot=0,maxY=y;
+   // Resolve each layer before reserving positions for the next one. A saved
+   // position in a later layer may need to move below this band; its old
+   // coordinates must not block visibly empty space here.
+   if(g.layers?.length)for(const item of items)if(valid(item.position)){
+    const p={x:item.position!.x,y:Math.max(bandTop,item.position!.y)};let blocker;
+    while((blocker=occupied.find(q=>p.x<q.x+nodeWidth+16&&p.x+nodeWidth+16>q.x&&p.y<q.y+nodeHeight+16&&p.y+nodeHeight+16>q.y)))p.y=blocker.y+nodeHeight+gapY;
+    local.set(item.id,p);occupied.push(p);
+   }
+   const automatic=items.filter(n=>!local.has(n.id));
    for(const item of automatic){let p:{x:number;y:number};do{p={x:slot%columns*(nodeWidth+gapX),y:y+Math.floor(slot/columns)*(nodeHeight+gapY)};slot++}while(overlaps(p));local.set(item.id,p);occupied.push(p);maxY=Math.max(maxY,p.y)}
    for(const item of items){const p=local.get(item.id);if(p)maxY=Math.max(maxY,p.y)}
    y=maxY+(items.length?nodeHeight+gapY:30);

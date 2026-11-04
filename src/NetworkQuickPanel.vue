@@ -44,7 +44,7 @@ async function submit(){
   emit('close');
  }catch(e){error.value=(e as Error).message}finally{busy.value=false}
 }
-onMounted(()=>nextTick(()=>nameInput.value?.focus()));
+onMounted(()=>nextTick(()=>nameInput.value?.focus({preventScroll:true})));
 </script>
 <template>
  <section ref="root" class="panel quick-network" :aria-label="mode==='network'?'快速网络配置':mode==='members'?'批量加入网络':'批量建立连接'">

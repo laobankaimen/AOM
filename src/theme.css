@@ -420,7 +420,7 @@ body:has(.app-shell.hide-sidebar) .editor-page { left:0; }
 .canvas-first .topology-primary-toolbar .search-box input { width:100%; padding-block:7px; }
 .canvas-first .topology-main,.hide-details .canvas-first .topology-main { flex:1; display:block; position:relative; min-height:0; }
 .canvas-first .topology-content { height:100%; min-height:0; display:flex; flex-direction:column; }
-.canvas-first .topology-canvas,.hide-stats.hide-tools .canvas-first .topology-canvas { height:auto; min-height:0; flex:1; display:block; overflow:auto; cursor:grab; background:#f6f9fc; }
+.canvas-first .topology-canvas,.hide-stats.hide-tools .canvas-first .topology-canvas { height:auto; min-height:0; flex:1; display:block; overflow:auto; overflow-anchor:none; cursor:grab; background:#f6f9fc; }
 .canvas-first .topology-stage { min-width:100%; min-height:100%; width:max-content; padding:40px; box-sizing:border-box; }
 .canvas-first .topology-canvas svg { margin:0; flex:none; }
 .canvas-first .topology-inspector { position:absolute; top:12px; right:12px; width:310px; max-width:calc(100% - 24px); max-height:calc(100% - 80px); z-index:8; background:white; border:1px solid #cbd9eb; border-radius:9px; box-shadow:0 8px 28px #19385720; }
@@ -593,8 +593,6 @@ a[aria-disabled=true] { cursor:not-allowed; opacity:.5; }
 .template-actual-preview>span { font-size:11px; color:var(--text-secondary); }
 @media(min-width:1000px) {
  .canvas-first .topology-workbench.inspector-visible { display:grid; grid-template-columns:minmax(0,1fr) 344px; gap:12px; align-items:start; }
- .canvas-first .topology-main.navigation-visible { padding-left:410px; }
- .canvas-first .topology-main.inspector-visible.navigation-visible { padding-left:0; }
 }
 .floor-scroll { cursor:grab; }
 .topology-node.is-search-match>rect { stroke:#92400e; stroke-width:2.5; }

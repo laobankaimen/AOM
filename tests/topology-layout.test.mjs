@@ -46,3 +46,28 @@ test('saved device coordinates cannot lift a lower-layer device into a higher la
 test('a real empty network keeps a compact actionable lane without a device-sized blank area',()=>{
  const r=layout([{id:'empty',preserveEmpty:true,items:[]}],1200,184,76);assert.equal(r.lanes.length,1);assert.equal(r.lanes[0].height,130);assert.equal(r.lanes[0].bands.length,0);assert.equal(r.nodes.size,0);
 });
+
+test('other layers cannot reserve invisible old positions in an empty part of the current layer',()=>{
+ const layers=[{id:'access',name:'接入层'},{id:'compute',name:'计算层'}];
+ const group={id:'n',layers,items:[
+  {id:'lower',role:'server',layerId:'compute',position:{x:0,y:112}},
+  {id:'top-a',role:'access',layerId:'access',position:{x:0,y:0}},
+  {id:'top-b',role:'access',layerId:'access',position:{x:208,y:0}},
+  {id:'mover',role:'access',layerId:'access',position:{x:416,y:112}},
+ ]};
+ const initial=layout([group],1200,184,76);assert.deepEqual(initial.lanes[0].local.get('lower'),{x:0,y:224});
+ const moved={...group,items:group.items.map(item=>item.id==='mover'?{...item,position:{x:0,y:112}}:item)},original=JSON.stringify(moved);
+ for(const order of [moved.items,[...moved.items].reverse()]){
+  const result=layout([{...moved,items:order}],1200,184,76);
+  assert.deepEqual(result.lanes[0].local.get('mover'),{x:0,y:112});assert.deepEqual(result.lanes[0].local.get('lower'),{x:0,y:224});noOverlap(result,184,76);
+ }
+ assert.equal(JSON.stringify(moved),original);
+});
+
+test('automatic cards fill real empty layer slots without dodging old coordinates from a later layer',()=>{
+ const result=layout([{id:'n',layers:[{id:'access',name:'接入层'},{id:'compute',name:'计算层'}],items:[
+  {id:'lower',role:'server',layerId:'compute',position:{x:0,y:0}},
+  {id:'automatic',role:'access',layerId:'access'},
+ ]}],1200,184,76);
+ assert.deepEqual(result.lanes[0].local.get('automatic'),{x:0,y:0});assert.deepEqual(result.lanes[0].local.get('lower'),{x:0,y:112});noOverlap(result,184,76);
+});

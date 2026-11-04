@@ -40,7 +40,7 @@ const geometry=computed(()=>{
  const lanes=base.lanes.map(l=>{const o=networkDrag.offset(l.id);return {...l,x:l.x+o.x,y:l.y+o.y,nodeX:l.nodeX+o.x,nodeY:l.nodeY+o.y,childrenY:l.childrenY?l.childrenY+o.y:0}});for(const lane of [...lanes].reverse()){const parent=lanes.find(p=>p.id===lane.parentId);if(parent){parent.width=Math.max(parent.width,lane.x+lane.width-parent.x+20);parent.height=Math.max(parent.height,lane.y+lane.height-parent.y+20)}}return {...base,nodes,lanes};
 });
 const fitted=useTopologyViewport(canvas,()=>baseGeometry.value,()=>props.zoom,value=>emit('update:zoom',value),()=>!!dragging.value||!!networkDrag.active.value||!!wire.value||!!pan.value);
-defineExpose({fit:fitted.fit,actual:fitted.actual,zoomBy:(delta:number)=>fitted.change(props.zoom+delta),revealNetwork});
+defineExpose({fit:fitted.fit,actual:fitted.actual,zoomBy:(delta:number)=>fitted.change(props.zoom+delta),revealNetwork,preserveView:()=>{const el=canvas.value?.closest<HTMLElement>('.topology-workspace');fitted.preserve(el?.clientWidth,el?.clientHeight)}});
 let observer:ResizeObserver|undefined;
 function revealNetwork(id:string){void nextTick(()=>{
  const el=canvas.value,header=el?.querySelector<SVGRectElement>(`[data-network-handle="${CSS.escape(id)}"]>rect`);if(!el||!header)return;
