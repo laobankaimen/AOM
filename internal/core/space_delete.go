@@ -103,7 +103,7 @@ func DeleteModuleWithContents(s *State, id string, o SpaceDeleteOptions) (string
 		return "", err
 	}
 	if o.Mode == "migrate" {
-		return fmt.Sprintf("删除微模块：%s；%d台设备迁移至目标模块待上架区，保留网络和连接", name, len(ids)), nil
+		return fmt.Sprintf("删除微模块：%s；%d台设备迁移至目标机房共享待上架区，保留网络和连接", name, len(ids)), nil
 	}
 	return fmt.Sprintf("删除微模块：%s；同时删除%d台设备及其关联连接，保留其他资产和网络", name, len(ids)), nil
 }
@@ -217,5 +217,5 @@ func DeleteRackWithContents(s *State, id string, o SpaceDeleteOptions) (string, 
 	if o.Mode == "cascade" {
 		return fmt.Sprintf("删除机柜：%s；删除%d台设备及关联连接", rack.Name, len(ids)), nil
 	}
-	return fmt.Sprintf("删除机柜：%s；%d台设备保留在模块待上架区", rack.Name, len(ids)), nil
+	return fmt.Sprintf("删除机柜：%s；%d台设备保留在机房共享待上架区", rack.Name, len(ids)), nil
 }

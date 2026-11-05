@@ -1,0 +1,48 @@
+import {test,expect} from './fixtures';
+import type {APIRequestContext,Page} from '@playwright/test';
+import type {State,Device} from '../src/model';
+import {navigationHash} from '../src/navigationState';
+const snapshot=async(api:APIRequestContext):Promise<State>=>(await api.get('/api/state')).json();
+async function setup(page:Page,api:APIRequestContext,name:string){
+ let s=await snapshot(api);
+ async function plan(project:string,room:string,projectId='',modules=['模块A','模块B']){
+  const response=await api.post('/api/plans',{data:{revision:s.revision,plan:{project_name:project,project_id:projectId,site_name:room,modules:modules.map(name=>({name,type:'single',rack_count:2,u_height:42})),infra:{power:0,ac:0,env:0}}}});expect(response.ok()).toBeTruthy();s=await response.json();
+ }
+ await plan(name,'共享机房');const project=s.projects.find(p=>p.name===name)!,room=s.sites.find(r=>r.projectId===project.id)!,[a,b]=s.modules.filter(m=>m.siteId===room.id),[a1,a2]=s.racks.filter(r=>r.moduleId===a.id),[b1,b2]=s.racks.filter(r=>r.moduleId===b.id);
+ await plan('','其他机房',project.id,['其他机房模块']);const other=s.modules.find(m=>m.siteId===s.sites.find(r=>r.projectId===project.id&&r.id!==room.id)!.id)!;
+ await plan(name+'其他项目','其他项目机房','',['其他项目模块']);const foreign=s.modules.find(m=>m.siteId===s.sites.find(r=>r.projectId===s.projects.find(p=>p.name===name+'其他项目')!.id)!.id)!;
+ const created:Device[]=[];
+ for(const [index,title,module,model,status] of [
+  [0,'跨模块设备',a.id,'model-r722','pending'],[1,'本模块设备',b.id,'model-r722','pending'],[2,'高度待确认设备',a.id,'model-core','pending'],[3,'维护待架设备',a.id,'model-r722','maintenance'],[4,'备用设备',a.id,'model-r722','pending'],[5,'其他机房设备',other.id,'model-r722','pending'],[6,'其他项目设备',foreign.id,'model-r722','pending']
+ ] as const){const tag='POOL-'+project.id+'-'+index,response=await api.post('/api/devices',{data:{revision:s.revision,autoPlace:false,device:{assetTag:tag,name:title,modelId:model,moduleId:module,status,ip:'',sn:'',note:'共享池验收'}}});expect(response.ok()).toBeTruthy();s=await response.json();created.push(s.devices.find(d=>d.assetTag===tag)!)}
+ const response=await api.post('/api/networks',{data:{revision:s.revision,network:{projectId:project.id,siteId:room.id,name:'保留归属网络',purpose:'management',color:'#6287b8',deviceIds:[created[0].id,created[1].id],devicePositions:{[created[0].id]:{x:44,y:112}},layers:[{id:'app',name:'设备层'}],deviceLayers:{[created[0].id]:'app',[created[1].id]:'app'}}}});expect(response.ok()).toBeTruthy();s=await response.json();
+ const link=await api.post('/api/links',{data:{revision:s.revision,link:{projectId:project.id,sourceId:created[0].id,targetId:created[1].id,kind:'logical',status:'pending',networkIds:[]}}});expect(link.ok()).toBeTruthy();s=await link.json();
+ await open(page,project.id,room.id,b.id,b2.id);
+ return {s,project,room,a,b,a1,a2,b1,b2,other,foreign,devices:created};
+}
+async function open(page:Page,project:string,room:string,module:string,rack:string){await page.goto('/'+navigationHash({view:'elevation',project,room,module,rack,network:''}));await expect(page.locator('.pending-list')).toBeVisible()}
+const pending=(page:Page,name:string)=>page.getByRole('button',{name:'查看待上架设备 '+name,exact:true});
+
+test('同机房共享待上架列表，跨模块连续上架到当前柜，刷新和切柜不丢失',async({page,request})=>{
+ const data=await setup(page,request,'机房共享池'),[cross,local,unknown]=data.devices;
+ await expect(page.locator('.placement-panel')).toContainText('机房共享 · 5 台待分配');await expect(pending(page,cross.name)).toBeVisible();await expect(pending(page,local.name)).toBeVisible();await expect(pending(page,'其他机房设备')).toHaveCount(0);await expect(pending(page,'其他项目设备')).toHaveCount(0);
+ await page.getByRole('combobox',{name:'切换微模块',exact:true}).selectOption(data.a.id);await expect(page.locator('.pending-device-row')).toHaveCount(5);await expect(pending(page,local.name)).toBeVisible();await page.getByRole('combobox',{name:'切换微模块',exact:true}).selectOption(data.b.id);await page.getByRole('button',{name:'定位机柜 '+data.b2.name,exact:true}).click();
+ const search=page.getByRole('textbox',{name:'搜索待上架设备',exact:true});await search.fill('跨模块');await expect(page.locator('.pending-device-row')).toHaveCount(1);await search.fill('');await expect(page.getByRole('button',{name:'上架到当前机柜 '+unknown.name,exact:true})).toBeDisabled();
+ await page.getByRole('button',{name:'上架到当前机柜 '+cross.name,exact:true}).click();await expect(pending(page,cross.name)).toHaveCount(0);await expect(page.locator('.pending-device-row')).toHaveCount(4);await expect(page.locator('.selected-device')).toHaveCount(0);
+ await page.getByRole('button',{name:'上架到当前机柜 '+local.name,exact:true}).click();await expect(page.locator('.pending-device-row')).toHaveCount(3);let after=await snapshot(request);
+ expect(after.devices.find(d=>d.id===cross.id)).toEqual({...cross,moduleId:data.b.id,rackId:data.b2.id,startU:1,status:'installed'});expect(after.devices.find(d=>d.id===local.id)).toEqual({...local,rackId:data.b2.id,startU:3,status:'installed'});expect(after.devices.length).toBe(data.s.devices.length);expect(after.networks).toEqual(data.s.networks);expect(after.links).toEqual(data.s.links);
+ await page.reload();await expect(page.locator('.pending-device-row')).toHaveCount(3);await page.getByRole('combobox',{name:'切换微模块',exact:true}).selectOption(data.a.id);await expect(page.locator('.pending-device-row')).toHaveCount(3);await expect(pending(page,cross.name)).toHaveCount(0);await page.getByRole('combobox',{name:'切换微模块',exact:true}).selectOption(data.b.id);await page.getByRole('button',{name:cross.name+' U1',exact:true}).click();await page.getByRole('button',{name:'移至待上架区',exact:true}).click();await page.getByRole('button',{name:'返回待上架列表',exact:true}).click();await expect(page.locator('.pending-device-row')).toHaveCount(4);await page.getByRole('combobox',{name:'切换微模块',exact:true}).selectOption(data.a.id);await expect(pending(page,cross.name)).toBeVisible();await page.screenshot({path:'.cache/room-shared-pending.png',fullPage:true});await page.getByRole('button',{name:'上架到当前机柜 维护待架设备',exact:true}).click();await expect.poll(async()=>(await snapshot(request)).devices.find(d=>d.id===data.devices[3].id)?.status).toBe('maintenance');
+});
+
+test('共享设备手动选择U位默认当前柜，可跨模块选择与撤销，满柜禁用且不写入',async({page,request})=>{
+ const data=await setup(page,request,'共享池快捷机位'),[cross]=data.devices;
+ await pending(page,cross.name).click();await page.getByRole('button',{name:'上架 '+cross.name,exact:true}).click();const racks=page.getByRole('combobox',{name:'快捷上架机柜',exact:true});await expect(racks).toHaveValue(data.b2.id);await expect(racks.locator('option')).toHaveCount(4);await expect(racks).toContainText('模块A / '+data.a1.name);await expect(racks).toContainText('模块B / '+data.b2.name);await expect(racks).not.toContainText('其他机房模块');await page.getByRole('combobox',{name:'快捷上架U位',exact:true}).selectOption('11');await page.getByRole('button',{name:'确认机位',exact:true}).click();await expect.poll(async()=>(await snapshot(request)).devices.find(d=>d.id===cross.id)?.startU).toBe(11);await expect(page.getByRole('combobox',{name:'切换微模块',exact:true})).toHaveValue(data.b.id);await page.getByRole('button',{name:'撤销机位变更',exact:true}).click();await expect.poll(async()=>(await snapshot(request)).devices.find(d=>d.id===cross.id)).toEqual(cross);await page.getByRole('button',{name:'返回待上架列表',exact:true}).click();await expect(page.locator('.pending-device-row')).toHaveCount(5);await expect(page).not.toHaveURL(/device=/);
+ let s=await snapshot(request);const model=await request.post('/api/models',{data:{revision:s.revision,model:{name:'满柜设备-'+data.project.id,role:'server',uHeight:42}}});expect(model.ok()).toBeTruthy();s=await model.json();const modelId=s.models.find(m=>m.name==='满柜设备-'+data.project.id)!.id,full=await request.post('/api/devices',{data:{revision:s.revision,autoPlace:false,device:{assetTag:'FULL-'+data.project.id,name:'满柜占用',modelId,moduleId:data.b.id,rackId:data.b2.id,startU:1,status:'installed'}}});expect(full.ok()).toBeTruthy();s=await full.json();await page.reload();await expect(page.getByRole('button',{name:'上架到当前机柜 '+cross.name,exact:true})).toBeDisabled();expect((await snapshot(request)).revision).toBe(s.revision);await page.getByRole('button',{name:'定位机柜 '+data.b1.name,exact:true}).click();await expect(page.getByRole('button',{name:'上架到当前机柜 '+cross.name,exact:true})).toBeEnabled();
+});
+
+test('从共享池拖入其他模块指定U位，冲突不变更归属和连接',async({page,request})=>{
+ const data=await setup(page,request,'共享池拖入机柜'),[cross,local]=data.devices;
+ const target=page.locator(`svg[data-drop-rack="${data.b2.id}"]`);await page.setViewportSize({width:1440,height:1600});
+ async function drop(name:string,u:number){const transfer=await page.evaluateHandle(()=>new DataTransfer());await pending(page,name).dispatchEvent('dragstart',{dataTransfer:transfer});const box=(await target.boundingBox())!,clientY=box.y+(36+(42-u)*20+10)/934*box.height;await target.dispatchEvent('drop',{dataTransfer:transfer,clientY});await transfer.dispose()}
+ await drop(cross.name,17);await expect.poll(async()=>(await snapshot(request)).devices.find(d=>d.id===cross.id)?.startU).toBe(17);await expect(page.getByRole('button',{name:cross.name+' U17',exact:true})).toBeVisible();await page.getByRole('button',{name:'返回待上架列表',exact:true}).click();const before=await snapshot(request);await drop(local.name,17);await expect(page.getByRole('status').filter({hasText:'占用'})).toBeVisible();expect(await snapshot(request)).toEqual(before);expect(before.devices.find(d=>d.id===cross.id)?.moduleId).toBe(data.b.id);expect(before.networks).toEqual(data.s.networks);expect(before.links).toEqual(data.s.links);
+});

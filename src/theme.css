@@ -801,3 +801,18 @@ td strong { font-weight:500; }
 .quick-network-body>.editor-fieldset>.error-banner { flex-shrink:0; margin:12px; }
 .quick-network-body .quick-actions { flex-shrink:0; margin:0; padding:12px 16px; border-top:1px solid var(--border); background:var(--surface); }
 .quick-network-body .quick-actions>span { flex:1 1 160px; font-size:11px; }
+
+/* Pending inventory is shared by room; changing the rack only changes the target. */
+.pending-room-context { display:grid; gap:5px; padding:12px 16px; border-bottom:1px solid var(--border); color:var(--text-secondary); font-size:12px; }
+.pending-room-context strong { color:var(--text-strong); font-weight:500; }
+.pending-room-context small { font-size:11px; line-height:1.7; }
+.pending-search { margin:12px 13px 4px; width:auto; flex:none; }
+.pending-device-row { display:flex; align-items:center; gap:6px; padding:8px 0; border-bottom:1px solid var(--border); }
+.pending-device-row:last-child { border-bottom:0; }
+.pending-device-select { display:flex; align-items:center; gap:8px; flex:1; min-width:0; border:0; background:transparent; color:var(--text-secondary); text-align:left; justify-content:flex-start; white-space:normal; padding:5px 0; cursor:grab; }
+.pending-device-select:active { cursor:grabbing; }
+.pending-device-select>svg { flex-shrink:0; }
+.pending-device-select>span { min-width:0; overflow-wrap:anywhere; }
+.pending-device-select strong { display:block; font-size:12px; font-weight:500; color:var(--text-strong); }
+.pending-device-select small { display:block; font-size:11px; color:var(--text-muted); line-height:1.6; }
+.pending-device-row>.secondary { flex-shrink:0; min-height:32px; padding:5px 9px; }
